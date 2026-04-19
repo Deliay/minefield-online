@@ -42,10 +42,15 @@ function App() {
     const stage = stageRef.current
     if (!stage) return
     const pos = stage.getPointerPosition()
+    const stagePos = stage.absolutePosition()
     if (pos) {
-      const snappedX = Math.floor(pos.x / CELL_SIZE) * CELL_SIZE
-      const snappedY = Math.floor(pos.y / CELL_SIZE) * CELL_SIZE
-      setPointerPos({ x: snappedX, y: snappedY })
+      const absX = pos.x + stagePos.x
+      const absY = pos.y + stagePos.y
+      const snappedX = Math.floor(absX / CELL_SIZE) * CELL_SIZE
+      const snappedY = Math.floor(absY / CELL_SIZE) * CELL_SIZE
+      const cellX = snappedX - stagePos.x
+      const cellY = snappedY - stagePos.y
+      setPointerPos({ x: cellX, y: cellY })
     }
   }, [])
 

@@ -53,16 +53,18 @@ function App() {
   }, [])
 
   const gridLines: React.ReactNode[] = []
-  const cols = Math.ceil(dimensions.width / CELL_SIZE) + 1
-  const rows = Math.ceil(dimensions.height / CELL_SIZE) + 1
+  const cols = 30
+  const rows = 16
+  const gridWidth = cols * CELL_SIZE
+  const gridHeight = rows * CELL_SIZE
 
   for (let i = 0; i <= cols; i++) {
     const x = i * CELL_SIZE
-    gridLines.push(<Line key={`v-${i}`} points={[x, 0, x, dimensions.height]} stroke="#333" strokeWidth={1} />)
+    gridLines.push(<Line key={`v-${i}`} points={[x, 0, x, gridHeight]} stroke="#333" strokeWidth={1} />)
   }
   for (let i = 0; i <= rows; i++) {
     const y = i * CELL_SIZE
-    gridLines.push(<Line key={`h-${i}`} points={[0, y, dimensions.width, y]} stroke="#333" strokeWidth={1} />)
+    gridLines.push(<Line key={`h-${i}`} points={[0, y, gridWidth, y]} stroke="#333" strokeWidth={1} />)
   }
 
   return (

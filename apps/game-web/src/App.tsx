@@ -1,12 +1,15 @@
-import { Stage, Layer } from 'react-konva'
-import { useEffect, useRef, useState } from 'react'
+import { Stage, Layer, Rect, Line } from 'react-konva'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Konva from 'konva'
-import Cell from './components/Cell'
+
+const CELL_SIZE = 40
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight })
   const stageRef = useRef<Konva.Stage>(null)
+  const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
+  const [isDraggingEnabled, setIsDraggingEnabled] = useState(false)
 
   useEffect(() => {
     const handleResize = () => {
@@ -16,19 +19,72 @@ function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Alt') {
+        setIsDraggingEnabled(true)
+      }
+    }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Alt') {
+        setIsDraggingEnabled(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+
+  const handleMouseMove = useCallback(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    const pos = stage.getPointerPosition()
+    if (pos) {
+      const snappedX = Math.floor(pos.x / CELL_SIZE) * CELL_SIZE
+      const snappedY = Math.floor(pos.y / CELL_SIZE) * CELL_SIZE
+      setPointerPos({ x: snappedX, y: snappedY })
+    }
+  }, [])
+
+  const gridLines: React.ReactNode[] = []
+  const cols = Math.ceil(dimensions.width / CELL_SIZE) + 1
+  const rows = Math.ceil(dimensions.height / CELL_SIZE) + 1
+
+  for (let i = 0; i <= cols; i++) {
+    const x = i * CELL_SIZE
+    gridLines.push(<Line key={`v-${i}`} points={[x, 0, x, dimensions.height]} stroke="#333" strokeWidth={1} />)
+  }
+  for (let i = 0; i <= rows; i++) {
+    const y = i * CELL_SIZE
+    gridLines.push(<Line key={`h-${i}`} points={[0, y, dimensions.width, y]} stroke="#333" strokeWidth={1} />)
+  }
+
   return (
     <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'black' }}>
       <Stage
         ref={stageRef}
         width={dimensions.width}
         height={dimensions.height}
-        draggable
-        style={{ cursor: 'grab' }}
+        draggable={isDraggingEnabled}
+        style={{ cursor: isDraggingEnabled ? 'grab' : 'default' }}
+        onMouseMove={handleMouseMove}
       >
         <Layer>
-          <Cell x={0} y={0} />
-          <Cell x={40} y={0} />
-          <Cell x={80} y={0} />
+          {gridLines}
+          {pointerPos && (
+            <Rect
+              x={pointerPos.x}
+              y={pointerPos.y}
+              width={CELL_SIZE}
+              height={CELL_SIZE}
+              fill="rgba(128, 128, 128, 0.5)"
+              stroke="#fff"
+              strokeWidth={2}
+            />
+          )}
         </Layer>
       </Stage>
     </div>

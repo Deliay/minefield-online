@@ -1,5 +1,5 @@
-import { Stage, Layer, Rect, Line } from 'react-konva'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { Stage, Layer, Rect, Line, Text } from 'react-konva'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Konva from 'konva'
 
 const CELL_SIZE = 40
@@ -12,6 +12,23 @@ function App() {
   const stageRef = useRef<Konva.Stage>(null)
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
   const [isDraggingEnabled, setIsDraggingEnabled] = useState(false)
+  const [flaggedCells, setFlaggedCells] = useState<Set<string>>(new Set())
+  const [revealedCells, setRevealedCells] = useState<Map<string, number>>(new Map())
+  const cellNumberCache = useRef<Map<string, number>>(new Map())
+
+  const cellKey = (col: number, row: number) => `${col},${row}`
+  const toggleFlag = (col: number, row: number) => {
+    const key = cellKey(col, row)
+    setFlaggedCells((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
     const stage = stageRef.current
@@ -66,6 +83,60 @@ function App() {
     }
   }, [])
 
+  const handleContextMenu = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      e.evt.preventDefault()
+      const stage = stageRef.current
+      if (!stage) return
+      const pos = stage.getPointerPosition()
+      const stagePos = stage.absolutePosition()
+      if (pos) {
+        const absX = pos.x - stagePos.x
+        const absY = pos.y - stagePos.y
+        const col = Math.floor(absX / CELL_SIZE)
+        const row = Math.floor(absY / CELL_SIZE)
+        if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+          toggleFlag(col, row)
+        }
+      }
+    },
+    []
+  )
+
+  const handleClick = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (e.evt.button !== 0) return
+      const stage = stageRef.current
+      if (!stage) return
+      const pos = stage.getPointerPosition()
+      const stagePos = stage.absolutePosition()
+      if (pos) {
+        const absX = pos.x - stagePos.x
+        const absY = pos.y - stagePos.y
+        const col = Math.floor(absX / CELL_SIZE)
+        const row = Math.floor(absY / CELL_SIZE)
+        if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+          const key = cellKey(col, row)
+          if (!revealedCells.has(key) && !flaggedCells.has(key)) {
+            let num: number
+            if (cellNumberCache.current.has(key)) {
+              num = cellNumberCache.current.get(key)!
+            } else {
+              num = Math.floor(Math.random() * 8) + 1
+              cellNumberCache.current.set(key, num)
+            }
+            setRevealedCells((prev) => {
+              const next = new Map(prev)
+              next.set(key, num)
+              return next
+            })
+          }
+        }
+      }
+    },
+    [revealedCells, flaggedCells]
+  )
+
   const gridLines: React.ReactNode[] = []
   const gridWidth = COLS * CELL_SIZE
   const gridHeight = ROWS * CELL_SIZE
@@ -79,6 +150,62 @@ function App() {
     gridLines.push(<Line key={`h-${i}`} points={[0, y, gridWidth, y]} stroke="#333" strokeWidth={1} />)
   }
 
+  const flaggedRects = useMemo(() => {
+    return Array.from(flaggedCells).map((key) => {
+      const [col, row] = key.split(',').map(Number)
+      return (
+        <Text
+          key={key}
+          x={col * CELL_SIZE}
+          y={row * CELL_SIZE}
+          width={CELL_SIZE}
+          height={CELL_SIZE}
+          text="🚩"
+          fontSize={24}
+          align="center"
+          verticalAlign="middle"
+        />
+      )
+    })
+  }, [flaggedCells])
+
+  const revealedRects = useMemo(() => {
+    return Array.from(revealedCells.keys()).map((key) => {
+      const [col, row] = key.split(',').map(Number)
+      return (
+        <Rect
+          key={key}
+          x={col * CELL_SIZE}
+          y={row * CELL_SIZE}
+          width={CELL_SIZE}
+          height={CELL_SIZE}
+          fill="#ccc"
+        />
+      )
+    })
+  }, [revealedCells])
+
+  const revealedNumbers = useMemo(() => {
+    return Array.from(revealedCells.entries()).map(([key, num]) => {
+      const [col, row] = key.split(',').map(Number)
+      return (
+        <Text
+          key={`num-${key}`}
+          x={col * CELL_SIZE}
+          y={row * CELL_SIZE}
+          width={CELL_SIZE}
+          height={CELL_SIZE}
+          text={String(num)}
+          fontSize={20}
+          fontStyle="bold"
+          fill="#000"
+          align="center"
+          verticalAlign="middle"
+        />
+      )
+    })
+  }, [revealedCells])
+
   return (
     <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'black' }}>
       <Stage
@@ -88,9 +215,14 @@ function App() {
         draggable={isDraggingEnabled}
         style={{ cursor: isDraggingEnabled ? 'grab' : 'default' }}
         onMouseMove={handleMouseMove}
+        onContextMenu={handleContextMenu}
+        onClick={handleClick}
       >
         <Layer>
           {gridLines}
+          {flaggedRects}
+          {revealedRects}
+          {revealedNumbers}
           {pointerPos && (
             <Rect
               x={pointerPos.x}

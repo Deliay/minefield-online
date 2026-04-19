@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import Konva from 'konva'
 
 const CELL_SIZE = 40
+const COLS = 1200
+const ROWS = 640
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -10,6 +12,18 @@ function App() {
   const stageRef = useRef<Konva.Stage>(null)
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
   const [isDraggingEnabled, setIsDraggingEnabled] = useState(false)
+
+  useEffect(() => {
+    const stage = stageRef.current
+    if (stage) {
+      const gridWidth = COLS * CELL_SIZE
+      const gridHeight = ROWS * CELL_SIZE
+      stage.position({
+        x: -(gridWidth - dimensions.width) / 2,
+        y: -(gridHeight - dimensions.height) / 2,
+      })
+    }
+  }, [])
 
   useEffect(() => {
     const handleResize = () => {
@@ -53,16 +67,14 @@ function App() {
   }, [])
 
   const gridLines: React.ReactNode[] = []
-  const cols = 30
-  const rows = 16
-  const gridWidth = cols * CELL_SIZE
-  const gridHeight = rows * CELL_SIZE
+  const gridWidth = COLS * CELL_SIZE
+  const gridHeight = ROWS * CELL_SIZE
 
-  for (let i = 0; i <= cols; i++) {
+  for (let i = 0; i <= COLS; i++) {
     const x = i * CELL_SIZE
     gridLines.push(<Line key={`v-${i}`} points={[x, 0, x, gridHeight]} stroke="#333" strokeWidth={1} />)
   }
-  for (let i = 0; i <= rows; i++) {
+  for (let i = 0; i <= ROWS; i++) {
     const y = i * CELL_SIZE
     gridLines.push(<Line key={`h-${i}`} points={[0, y, gridWidth, y]} stroke="#333" strokeWidth={1} />)
   }

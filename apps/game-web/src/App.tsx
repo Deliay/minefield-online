@@ -23,8 +23,8 @@ function App() {
 
     socketService.onInit((data) => {
       const newRevealed = new Map<string, { isMine: boolean; number: number }>();
-      for (const { col, row, cell } of data.revealed) {
-        newRevealed.set(cellKey(col, row), cell);
+      for (const cell of data.revealed) {
+        newRevealed.set(cellKey(cell.col, cell.row), { isMine: cell.isMine, number: cell.number });
       }
       setRevealedCells(newRevealed);
 
@@ -38,7 +38,9 @@ function App() {
     socketService.onCellRevealed((data) => {
       setRevealedCells((prev) => {
         const next = new Map(prev);
-        next.set(cellKey(data.col, data.row), data.cells[0]);
+        for (const cell of data.cells) {
+          next.set(cellKey(cell.col, cell.row), { isMine: cell.isMine, number: cell.number });
+        }
         return next;
       });
     });

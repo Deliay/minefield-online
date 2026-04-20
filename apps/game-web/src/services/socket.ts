@@ -3,6 +3,8 @@ import { io, Socket } from 'socket.io-client';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export interface RevealedCell {
+  col: number;
+  row: number;
   isMine: boolean;
   number: number;
 }
@@ -20,7 +22,7 @@ export interface CellFlaggedEvent {
 }
 
 export interface InitEvent {
-  revealed: Array<{ col: number; row: number; cell: RevealedCell }>;
+  revealed: RevealedCell[];
   flagged: Array<{ col: number; row: number }>;
 }
 

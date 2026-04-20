@@ -13,11 +13,26 @@ interface Cell {
   number: number;
 }
 
+interface RevealedCell {
+  isMine: boolean;
+  number: number;
+}
+
+interface GameState {
+  revealed: Map<string, RevealedCell>;
+  flagged: Set<string>;
+}
+
 export class Minefield {
   private cells: Cell[][];
+  private gameState: GameState;
 
   constructor() {
     this.cells = [];
+    this.gameState = {
+      revealed: new Map(),
+      flagged: new Set(),
+    };
     this.generate();
   }
 
@@ -99,6 +114,96 @@ export class Minefield {
       chunk.push(rowData);
     }
     return chunk;
+  }
+
+  private cellKey(col: number, row: number): string {
+    return `${col},${row}`;
+  }
+
+  isRevealed(col: number, row: number): boolean {
+    return this.gameState.revealed.has(this.cellKey(col, row));
+  }
+
+  isFlagged(col: number, row: number): boolean {
+    return this.gameState.flagged.has(this.cellKey(col, row));
+  }
+
+  reveal(col: number, row: number): RevealedCell[] {
+    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return [];
+    const key = this.cellKey(col, row);
+    if (this.isRevealed(col, row) || this.isFlagged(col, row)) return [];
+
+    const cell = this.cells[row][col];
+    const results: RevealedCell[] = [];
+
+    if (cell.isMine) {
+      this.gameState.revealed.set(key, { isMine: true, number: 0 });
+      results.push({ isMine: true, number: 0 });
+      return results;
+    }
+
+    const queue: { col: number; row: number }[] = [{ col, row }];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+      const { col: c, row: r } = queue.shift()!;
+      const k = this.cellKey(c, r);
+      if (visited.has(k)) continue;
+      visited.add(k);
+
+      const currentCell = this.cells[r][c];
+      this.gameState.revealed.set(k, { isMine: false, number: currentCell.number });
+      results.push({ isMine: false, number: currentCell.number });
+
+      if (currentCell.number === 0) {
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const ny = r + dy;
+            const nx = c + dx;
+            if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS) {
+              const nk = this.cellKey(nx, ny);
+              if (!visited.has(nk) && !this.isRevealed(nx, ny) && !this.isFlagged(nx, ny) && !this.cells[ny][nx].isMine) {
+                queue.push({ col: nx, row: ny });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+
+  flag(col: number, row: number): boolean {
+    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return false;
+    if (this.isRevealed(col, row)) return false;
+    const key = this.cellKey(col, row);
+    if (this.gameState.flagged.has(key)) {
+      this.gameState.flagged.delete(key);
+      return false;
+    } else {
+      this.gameState.flagged.add(key);
+      return true;
+    }
+  }
+
+  getAllRevealed(): Array<{ col: number; row: number; cell: RevealedCell }> {
+    const results: Array<{ col: number; row: number; cell: RevealedCell }> = [];
+    for (const [key, cell] of this.gameState.revealed) {
+      const [col, row] = key.split(',').map(Number);
+      results.push({ col, row, cell });
+    }
+    return results;
+  }
+
+  getAllFlagged(): Array<{ col: number; row: number }> {
+    const results: Array<{ col: number; row: number }> = [];
+    for (const key of this.gameState.flagged) {
+      const [col, row] = key.split(',').map(Number);
+      results.push({ col, row });
+    }
+    return results;
   }
 }
 

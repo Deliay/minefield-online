@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import * as minefieldModule from '../minefield.js';
 
 const { COLS, ROWS, CHUNK_COLS, CHUNK_ROWS, CHUNK_MINES } = minefieldModule;
-const { Minefield } = minefieldModule;
+const Minefield = minefieldModule.Minefield;
 
 describe('Minefield', () => {
-  let minefield: Minefield;
+  let minefield: InstanceType<typeof Minefield>;
 
   beforeEach(() => {
     minefield = new Minefield();

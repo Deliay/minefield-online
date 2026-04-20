@@ -14,12 +14,14 @@ interface Cell {
 }
 
 interface RevealedCell {
+  col: number;
+  row: number;
   isMine: boolean;
   number: number;
 }
 
 interface GameState {
-  revealed: Map<number, RevealedCell>;
+  revealed: Map<number, { isMine: boolean; number: number }>;
   flagged: Set<number>;
 }
 
@@ -138,7 +140,7 @@ export class Minefield {
 
     if (cell.isMine) {
       this.gameState.revealed.set(idx, { isMine: true, number: 0 });
-      results.push({ isMine: true, number: 0 });
+      results.push({ col, row, isMine: true, number: 0 });
       return results;
     }
 
@@ -155,7 +157,7 @@ export class Minefield {
       const c = Math.floor(currentIdx / ROWS);
       const currentCell = this.cells[r][c];
       revealed.set(currentIdx, { isMine: false, number: currentCell.number });
-      results.push({ isMine: false, number: currentCell.number });
+      results.push({ col: c, row: r, isMine: false, number: currentCell.number });
 
       if (currentCell.number === 0) {
         for (let dy = -1; dy <= 1; dy++) {
@@ -190,12 +192,12 @@ export class Minefield {
     }
   }
 
-  getAllRevealed(): Array<{ col: number; row: number; cell: RevealedCell }> {
-    const results: Array<{ col: number; row: number; cell: RevealedCell }> = [];
+  getAllRevealed(): RevealedCell[] {
+    const results: RevealedCell[] = [];
     for (const [idx, cell] of this.gameState.revealed) {
       const row = idx % ROWS;
       const col = Math.floor(idx / ROWS);
-      results.push({ col, row, cell });
+      results.push({ col, row, isMine: cell.isMine, number: cell.number });
     }
     return results;
   }

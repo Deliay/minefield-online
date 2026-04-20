@@ -6,6 +6,8 @@ import { socketService } from './services/socket'
 const CELL_SIZE = 40
 const COLS = 1200
 const ROWS = 640
+const MINIMAP_WIDTH = 200
+const MINIMAP_HEIGHT = Math.floor(ROWS * (MINIMAP_WIDTH / COLS))
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -15,6 +17,7 @@ function App() {
   const [isDraggingEnabled, setIsDraggingEnabled] = useState(false)
   const [flaggedCells, setFlaggedCells] = useState<Set<string>>(new Set())
   const [revealedCells, setRevealedCells] = useState<Map<string, { isMine: boolean; number: number }>>(new Map())
+  const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
 
   const cellKey = (col: number, row: number) => `${col},${row}`
 
@@ -72,8 +75,21 @@ function App() {
         x: -(gridWidth - dimensions.width) / 2,
         y: -(gridHeight - dimensions.height) / 2,
       })
+      setStagePos(stage.position())
     }
   }, [dimensions.width, dimensions.height])
+
+  useEffect(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    const handleDragEnd = () => {
+      setStagePos(stage.position())
+    }
+    stage.on('dragend', handleDragEnd)
+    return () => {
+      stage.off('dragend', handleDragEnd)
+    }
+  }, [])
 
   useEffect(() => {
     const handleResize = () => {
@@ -157,6 +173,37 @@ function App() {
       }
     },
     [revealedCells, flaggedCells]
+  )
+
+  const scaleX = MINIMAP_WIDTH / (COLS * CELL_SIZE)
+  const scaleY = MINIMAP_HEIGHT / (ROWS * CELL_SIZE)
+
+  const viewportRect = useMemo(() => {
+    const stageX = -stagePos.x
+    const stageY = -stagePos.y
+    return {
+      x: stageX * scaleX,
+      y: stageY * scaleY,
+      width: dimensions.width * scaleX,
+      height: dimensions.height * scaleY,
+    }
+  }, [stagePos, dimensions, scaleX, scaleY])
+
+  const handleMinimapClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const stage = stageRef.current
+      if (!stage) return
+      const rect = e.currentTarget.getBoundingClientRect()
+      const clickX = e.clientX - rect.left
+      const clickY = e.clientY - rect.top
+      const gridX = clickX / scaleX
+      const gridY = clickY / scaleY
+      const newStageX = -(gridX - dimensions.width / 2)
+      const newStageY = -(gridY - dimensions.height / 2)
+      stage.position({ x: newStageX, y: newStageY })
+      setStagePos({ x: newStageX, y: newStageY })
+    },
+    [scaleX, scaleY, dimensions]
   )
 
   const gridLines: React.ReactNode[] = []
@@ -270,6 +317,35 @@ function App() {
           )}
         </Layer>
       </Stage>
+      <button
+        type="button"
+        style={{
+          position: 'absolute',
+          bottom: 10,
+          right: 10,
+          width: MINIMAP_WIDTH,
+          height: MINIMAP_HEIGHT,
+          backgroundColor: '#222',
+          border: '2px solid #555',
+          cursor: 'pointer',
+          padding: 0,
+        }}
+        onClick={handleMinimapClick}
+        aria-label="Minimap navigation"
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: viewportRect.x,
+            top: viewportRect.y,
+            width: viewportRect.width,
+            height: viewportRect.height,
+            border: '2px solid #fff',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            boxSizing: 'border-box',
+          }}
+        />
+      </button>
     </div>
   )
 }

@@ -127,8 +127,8 @@ describe('Minefield', () => {
   describe('performance', () => {
     it('should reveal 100 cells within 10ms each', () => {
       const cellPositions: { col: number; row: number }[] = [];
-      for (let col = 50; col < 150 && cellPositions.length < 100; col += 3) {
-        for (let row = 50; row < 150 && cellPositions.length < 100; row += 3) {
+      for (let col = 500; col < 600 && cellPositions.length < 100; col += 3) {
+        for (let row = 500; row < 600 && cellPositions.length < 100; row += 3) {
           const cell = minefield.getCell(col, row);
           if (cell && !cell.isMine) {
             cellPositions.push({ col, row });

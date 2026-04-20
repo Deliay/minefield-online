@@ -22,7 +22,7 @@ io.on('connection', (socket) => {
     if (minefield.isRevealed(col, row) || minefield.isFlagged(col, row)) return;
     const results = minefield.reveal(col, row);
     if (results.length > 0) {
-      socket.broadcast.emit('cellRevealed', { col, row, cells: results });
+      io.emit('cellRevealed', { col, row, cells: results });
     }
   });
 

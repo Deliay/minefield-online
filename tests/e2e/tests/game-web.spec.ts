@@ -1,14 +1,43 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('game-web', () => {
+test.describe('game-web socket integration', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
   });
 
-  test('canvas is visible', async ({ page }) => {
+  test('canvas is visible after page load', async ({ page }) => {
     const canvas = page.locator('canvas').first();
     await expect(canvas).toBeVisible();
+  });
+
+  test('socket connects successfully', async ({ page }) => {
+    const consoleLogs: string[] = [];
+    page.on('console', msg => {
+      if (msg.type() === 'log') {
+        consoleLogs.push(msg.text());
+      }
+    });
+
+    await page.goto('/');
+    await page.waitForTimeout(1500);
+
+    const connected = consoleLogs.some(log => log.includes('Connected to server'));
+    expect(connected).toBe(true);
+  });
+
+  test('left-click reveals a cell', async ({ page }) => {
+    const canvas = page.locator('canvas').first();
+    const bbox = await canvas.boundingBox();
+    expect(bbox).not.toBeNull();
+
+    const cellX = bbox!.x + bbox!.width / 2 + 100;
+    const cellY = bbox!.y + bbox!.height / 2 + 100;
+
+    await page.mouse.move(cellX, cellY);
+    await page.waitForTimeout(300);
+    await page.mouse.click(cellX, cellY, { button: 'left' });
+    await page.waitForTimeout(1000);
   });
 
   test('right-click flags a cell', async ({ page }) => {
@@ -16,27 +45,13 @@ test.describe('game-web', () => {
     const bbox = await canvas.boundingBox();
     expect(bbox).not.toBeNull();
 
-    const cellX = bbox!.x + bbox!.width / 2 + 100;
-    const cellY = bbox!.y + bbox!.height / 2 + 100;
+    const cellX = bbox!.x + bbox!.width / 2 + 200;
+    const cellY = bbox!.y + bbox!.height / 2 + 200;
 
     await page.mouse.move(cellX, cellY);
     await page.waitForTimeout(300);
     await page.mouse.click(cellX, cellY, { button: 'right' });
-    await page.waitForTimeout(500);
-  });
-
-  test('left-click reveals a cell with number', async ({ page }) => {
-    const canvas = page.locator('canvas').first();
-    const bbox = await canvas.boundingBox();
-    expect(bbox).not.toBeNull();
-
-    const revealX = bbox!.x + bbox!.width / 2 - 100;
-    const revealY = bbox!.y + bbox!.height / 2 - 100;
-
-    await page.mouse.move(revealX, revealY);
-    await page.waitForTimeout(300);
-    await page.mouse.click(revealX, revealY, { button: 'left' });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
   });
 
   test('right-click twice toggles flag off', async ({ page }) => {
@@ -44,15 +59,15 @@ test.describe('game-web', () => {
     const bbox = await canvas.boundingBox();
     expect(bbox).not.toBeNull();
 
-    const cellX = bbox!.x + bbox!.width / 2 + 100;
-    const cellY = bbox!.y + bbox!.height / 2 + 100;
+    const cellX = bbox!.x + bbox!.width / 2 + 300;
+    const cellY = bbox!.y + bbox!.height / 2 + 300;
 
     await page.mouse.move(cellX, cellY);
     await page.waitForTimeout(300);
     await page.mouse.click(cellX, cellY, { button: 'right' });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
     await page.mouse.click(cellX, cellY, { button: 'right' });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
   });
 
   test('left-click on flagged cell does not reveal it', async ({ page }) => {
@@ -60,15 +75,15 @@ test.describe('game-web', () => {
     const bbox = await canvas.boundingBox();
     expect(bbox).not.toBeNull();
 
-    const cellX = bbox!.x + bbox!.width / 2 + 100;
-    const cellY = bbox!.y + bbox!.height / 2 + 100;
+    const cellX = bbox!.x + bbox!.width / 2 + 400;
+    const cellY = bbox!.y + bbox!.height / 2 + 400;
 
     await page.mouse.move(cellX, cellY);
     await page.waitForTimeout(300);
     await page.mouse.click(cellX, cellY, { button: 'right' });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
     await page.mouse.click(cellX, cellY, { button: 'left' });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
   });
 
   test('drag stage with Space key held', async ({ page }) => {

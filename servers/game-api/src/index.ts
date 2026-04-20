@@ -35,7 +35,7 @@ io.on('connection', (socket) => {
     const updated = updateScore(socket.id, -100);
     if (updated) {
       io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
-      io.emit('leaderboard', { rankings: getLeaderboard() });
+      io.emit('leaderboard', { rankings: getLeaderboard(socket.id) });
     }
   });
 
@@ -47,7 +47,7 @@ io.on('connection', (socket) => {
     const updated = updateScore(socket.id, 10);
     if (updated) {
       io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
-      io.emit('leaderboard', { rankings: getLeaderboard() });
+      io.emit('leaderboard', { rankings: getLeaderboard(socket.id) });
     }
   });
 

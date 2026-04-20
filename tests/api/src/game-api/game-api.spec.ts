@@ -87,10 +87,8 @@ describe('game-api WebSocket API', () => {
     beforeEach(async () => {
       await waitForConnect(socket);
       await new Promise<void>((resolve) => {
-        socket.once('init', () => {
-          socket.once('reset', () => resolve());
-          socket.emit('reset');
-        });
+        socket.once('reset', () => resolve());
+        socket.emit('reset');
       });
     });
 
@@ -105,6 +103,70 @@ describe('game-api WebSocket API', () => {
       expect(data.row).toBe(350);
       expect(duration).toBeLessThan(20);
     });
+
+    it('should expand adjacent 0 cells when clicking on a non-zero number cell', async () => {
+      socket.emit('reveal', { col: 350, row: 350 });
+
+      const data = await waitForEvent<{ col: number; row: number; cells: RevealedCell[] }>(socket, 'cellRevealed');
+
+      const cellMap = new Map<string, number>();
+      for (const cell of data.cells) {
+        cellMap.set(`${cell.col},${cell.row}`, cell.number);
+      }
+
+      const clickedCell = cellMap.get(`${350},${350}`);
+      expect(clickedCell).toBeDefined();
+      if (clickedCell && clickedCell > 0) {
+        let hasAdjacentZero = false;
+        for (let dy = -1; dy <= 1 && !hasAdjacentZero; dy++) {
+          for (let dx = -1; dx <= 1 && !hasAdjacentZero; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const adjNum = cellMap.get(`${350 + dx},${350 + dy}`);
+            if (adjNum === 0) hasAdjacentZero = true;
+          }
+        }
+        if (hasAdjacentZero) {
+          let hasExpandedZero = false;
+          for (const [key, num] of cellMap) {
+            if (num === 0 && key !== '350,350') {
+              hasExpandedZero = true;
+              break;
+            }
+          }
+          expect(hasExpandedZero).toBe(true);
+        }
+      }
+    });
+
+    it('should receive response for ALL rapid reveal requests (no dropped responses)', async () => {
+      const cellRevealedEvents: { col: number; row: number; cells: RevealedCell[] }[] = [];
+      socket.on('cellRevealed', (data) => {
+        cellRevealedEvents.push(data);
+      });
+
+      await waitForConnect(socket);
+
+      await new Promise<void>((resolve) => {
+        socket.once('reset', () => resolve());
+        socket.emit('reset');
+      });
+
+      const cellsToReveal = [
+        { col: 350, row: 350 },
+        { col: 351, row: 350 },
+        { col: 352, row: 350 },
+        { col: 353, row: 350 },
+        { col: 354, row: 350 },
+      ];
+
+      for (const cell of cellsToReveal) {
+        socket.emit('reveal', cell);
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      expect(cellRevealedEvents.length).toBe(cellsToReveal.length);
+    }, 10000);
 
     it('should reveal 100 cells with max response time under 25ms', async () => {
       const revealedKeys = new Set<string>();

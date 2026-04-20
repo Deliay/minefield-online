@@ -144,34 +144,61 @@ export class Minefield {
       return results;
     }
 
-    const queue: number[] = [idx];
+    const queue: number[] = [];
     const visited = new Set<number>();
     const { revealed, flagged } = this.gameState;
 
+    const addToQueue = (c: number, r: number) => {
+      const nIdx = c * ROWS + r;
+      if (visited.has(nIdx) || revealed.has(nIdx) || flagged.has(nIdx)) return;
+      if (this.cells[r][c].isMine) return;
+      queue.push(nIdx);
+    };
+
+    const expandCell = (c: number, r: number): boolean => {
+      const cellIdx = c * ROWS + r;
+      if (visited.has(cellIdx)) return false;
+      const cCell = this.cells[r][c];
+      if (cCell.isMine) return false;
+      visited.add(cellIdx);
+      revealed.set(cellIdx, { isMine: false, number: cCell.number });
+      results.push({ col: c, row: r, isMine: false, number: cCell.number });
+      return cCell.number === 0;
+    };
+
+    if (cell.number === 0) {
+      queue.push(idx);
+    } else {
+      expandCell(col, row);
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = row + dy;
+        if (ny < 0 || ny >= ROWS) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = col + dx;
+          if (nx < 0 || nx >= COLS) continue;
+          if (this.cells[ny][nx].number === 0) {
+            addToQueue(nx, ny);
+          }
+        }
+      }
+    }
+
     while (queue.length > 0) {
       const currentIdx = queue.pop()!;
-      if (visited.has(currentIdx)) continue;
-      visited.add(currentIdx);
-
       const r = currentIdx % ROWS;
       const c = Math.floor(currentIdx / ROWS);
-      const currentCell = this.cells[r][c];
-      revealed.set(currentIdx, { isMine: false, number: currentCell.number });
-      results.push({ col: c, row: r, isMine: false, number: currentCell.number });
 
-      if (currentCell.number === 0) {
-        for (let dy = -1; dy <= 1; dy++) {
-          const ny = r + dy;
-          if (ny < 0 || ny >= ROWS) continue;
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const nx = c + dx;
-            if (nx < 0 || nx >= COLS) continue;
-            const nIdx = nx * ROWS + ny;
-            if (visited.has(nIdx) || revealed.has(nIdx) || flagged.has(nIdx)) continue;
-            if (this.cells[ny][nx].isMine) continue;
-            queue.push(nIdx);
-          }
+      if (!expandCell(c, r)) continue;
+
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = r + dy;
+        if (ny < 0 || ny >= ROWS) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = c + dx;
+          if (nx < 0 || nx >= COLS) continue;
+          addToQueue(nx, ny);
         }
       }
     }

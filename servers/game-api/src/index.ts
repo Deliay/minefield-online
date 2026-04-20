@@ -19,11 +19,12 @@ io.on('connection', (socket) => {
 
   socket.on('reveal', (data: { col: number; row: number }) => {
     const { col, row } = data;
-    if (minefield.isRevealed(col, row) || minefield.isFlagged(col, row)) return;
-    const results = minefield.reveal(col, row);
-    if (results.length > 0) {
-      io.emit('cellRevealed', { col, row, cells: results });
+    if (minefield.isRevealed(col, row) || minefield.isFlagged(col, row)) {
+      io.emit('cellRevealed', { col, row, cells: [] });
+      return;
     }
+    const results = minefield.reveal(col, row);
+    io.emit('cellRevealed', { col, row, cells: results });
   });
 
   socket.on('flag', (data: { col: number; row: number }) => {

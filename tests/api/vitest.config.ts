@@ -5,5 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.spec.ts'],
+    threads: false,
+    isolate: false,
   },
 });

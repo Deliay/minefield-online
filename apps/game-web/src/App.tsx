@@ -165,11 +165,11 @@ function App() {
 
   for (let i = 0; i <= COLS; i++) {
     const x = i * CELL_SIZE
-    gridLines.push(<Line key={`v-${i}`} points={[x, 0, x, gridHeight]} stroke="#333" strokeWidth={1} />)
+    gridLines.push(<Line key={`v-${i}`} points={[x, 0, x, gridHeight]} stroke="#333" strokeWidth={2} />)
   }
   for (let i = 0; i <= ROWS; i++) {
     const y = i * CELL_SIZE
-    gridLines.push(<Line key={`h-${i}`} points={[0, y, gridWidth, y]} stroke="#333" strokeWidth={1} />)
+    gridLines.push(<Line key={`h-${i}`} points={[0, y, gridWidth, y]} stroke="#333" strokeWidth={2} />)
   }
 
   const flaggedRects = useMemo(() => {
@@ -207,10 +207,21 @@ function App() {
     })
   }, [revealedCells])
 
+  const numberColors: Record<number, string> = {
+    1: '#0000FF',
+    2: '#008000',
+    3: '#FF0000',
+    4: '#000080',
+    5: '#800000',
+    6: '#008080',
+    7: '#000000',
+    8: '#808080',
+  }
+
   const revealedNumbers = useMemo(() => {
     return Array.from(revealedCells.entries()).map(([key, cell]) => {
       const [col, row] = key.split(',').map(Number)
-      if (cell.isMine) return null
+      if (cell.isMine || cell.number === 0) return null
       return (
         <Text
           key={`num-${key}`}
@@ -221,7 +232,7 @@ function App() {
           text={String(cell.number)}
           fontSize={20}
           fontStyle="bold"
-          fill="#000"
+          fill={numberColors[cell.number] || '#000'}
           align="center"
           verticalAlign="middle"
         />

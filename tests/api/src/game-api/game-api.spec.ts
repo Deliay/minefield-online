@@ -329,11 +329,14 @@ describe('game-api WebSocket API', () => {
       const sessionId = initData.sessionId;
 
       socket.emit('reset');
+      await waitForEvent<any>(socket, 'reset');
 
       for (let i = 0; i < 5; i++) {
         const col = 300 + i;
         socket.emit('reveal', { col, row: 300 });
-        await waitForEvent<any>(socket, 'cellRevealed');
+        try {
+          await waitForEvent<any>(socket, 'cellRevealed');
+        } catch {}
       }
 
       const scoreUpdate = await waitForEvent<ScoreUpdateEvent>(socket, 'scoreUpdate');

@@ -144,6 +144,7 @@ export class Minefield {
 
     const queue: number[] = [idx];
     const visited = new Set<number>();
+    const { revealed, flagged } = this.gameState;
 
     while (queue.length > 0) {
       const currentIdx = queue.pop()!;
@@ -153,21 +154,21 @@ export class Minefield {
       const r = currentIdx % ROWS;
       const c = Math.floor(currentIdx / ROWS);
       const currentCell = this.cells[r][c];
-      this.gameState.revealed.set(currentIdx, { isMine: false, number: currentCell.number });
+      revealed.set(currentIdx, { isMine: false, number: currentCell.number });
       results.push({ isMine: false, number: currentCell.number });
 
       if (currentCell.number === 0) {
         for (let dy = -1; dy <= 1; dy++) {
+          const ny = r + dy;
+          if (ny < 0 || ny >= ROWS) continue;
           for (let dx = -1; dx <= 1; dx++) {
             if (dx === 0 && dy === 0) continue;
-            const ny = r + dy;
             const nx = c + dx;
-            if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS) {
-              const nIdx = nx * ROWS + ny;
-              if (!visited.has(nIdx) && !this.gameState.revealed.has(nIdx) && !this.gameState.flagged.has(nIdx) && !this.cells[ny][nx].isMine) {
-                queue.push(nIdx);
-              }
-            }
+            if (nx < 0 || nx >= COLS) continue;
+            const nIdx = nx * ROWS + ny;
+            if (visited.has(nIdx) || revealed.has(nIdx) || flagged.has(nIdx)) continue;
+            if (this.cells[ny][nx].isMine) continue;
+            queue.push(nIdx);
           }
         }
       }
@@ -207,6 +208,11 @@ export class Minefield {
       results.push({ col, row });
     }
     return results;
+  }
+
+  reset(): void {
+    this.gameState.revealed.clear();
+    this.gameState.flagged.clear();
   }
 }
 

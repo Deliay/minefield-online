@@ -32,6 +32,11 @@ io.on('connection', (socket) => {
     io.emit('cellFlagged', { col, row, isFlagged });
   });
 
+  socket.on('reset', () => {
+    minefield.reset();
+    io.emit('reset');
+  });
+
   socket.on('disconnect', () => console.log('player disconnected:', socket.id));
 });
 

@@ -1,6 +1,7 @@
 import { Stage, Layer, Rect, Line, Text } from 'react-konva'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Konva from 'konva'
+import { socketService } from './services/socket'
 
 const CELL_SIZE = 40
 const COLS = 1200
@@ -13,22 +14,52 @@ function App() {
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
   const [isDraggingEnabled, setIsDraggingEnabled] = useState(false)
   const [flaggedCells, setFlaggedCells] = useState<Set<string>>(new Set())
-  const [revealedCells, setRevealedCells] = useState<Map<string, number>>(new Map())
-  const cellNumberCache = useRef<Map<string, number>>(new Map())
+  const [revealedCells, setRevealedCells] = useState<Map<string, { isMine: boolean; number: number }>>(new Map())
 
   const cellKey = (col: number, row: number) => `${col},${row}`
-  const toggleFlag = (col: number, row: number) => {
-    const key = cellKey(col, row)
-    setFlaggedCells((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) {
-        next.delete(key)
-      } else {
-        next.add(key)
+
+  useEffect(() => {
+    socketService.connect();
+
+    socketService.onInit((data) => {
+      const newRevealed = new Map<string, { isMine: boolean; number: number }>();
+      for (const { col, row, cell } of data.revealed) {
+        newRevealed.set(cellKey(col, row), cell);
       }
-      return next
-    })
-  }
+      setRevealedCells(newRevealed);
+
+      const newFlagged = new Set<string>();
+      for (const { col, row } of data.flagged) {
+        newFlagged.add(cellKey(col, row));
+      }
+      setFlaggedCells(newFlagged);
+    });
+
+    socketService.onCellRevealed((data) => {
+      setRevealedCells((prev) => {
+        const next = new Map(prev);
+        next.set(cellKey(data.col, data.row), data.cells[0]);
+        return next;
+      });
+    });
+
+    socketService.onCellFlagged((data) => {
+      setFlaggedCells((prev) => {
+        const next = new Set(prev);
+        const key = cellKey(data.col, data.row);
+        if (data.isFlagged) {
+          next.add(key);
+        } else {
+          next.delete(key);
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      socketService.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const stage = stageRef.current
@@ -40,7 +71,7 @@ function App() {
         y: -(gridHeight - dimensions.height) / 2,
       })
     }
-  }, [])
+  }, [dimensions.width, dimensions.height])
 
   useEffect(() => {
     const handleResize = () => {
@@ -96,7 +127,7 @@ function App() {
         const col = Math.floor(absX / CELL_SIZE)
         const row = Math.floor(absY / CELL_SIZE)
         if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
-          toggleFlag(col, row)
+          socketService.flag(col, row)
         }
       }
     },
@@ -118,18 +149,7 @@ function App() {
         if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
           const key = cellKey(col, row)
           if (!revealedCells.has(key) && !flaggedCells.has(key)) {
-            let num: number
-            if (cellNumberCache.current.has(key)) {
-              num = cellNumberCache.current.get(key)!
-            } else {
-              num = Math.floor(Math.random() * 8) + 1
-              cellNumberCache.current.set(key, num)
-            }
-            setRevealedCells((prev) => {
-              const next = new Map(prev)
-              next.set(key, num)
-              return next
-            })
+            socketService.reveal(col, row)
           }
         }
       }
@@ -170,7 +190,7 @@ function App() {
   }, [flaggedCells])
 
   const revealedRects = useMemo(() => {
-    return Array.from(revealedCells.keys()).map((key) => {
+    return Array.from(revealedCells.entries()).map(([key, cell]) => {
       const [col, row] = key.split(',').map(Number)
       return (
         <Rect
@@ -179,15 +199,16 @@ function App() {
           y={row * CELL_SIZE}
           width={CELL_SIZE}
           height={CELL_SIZE}
-          fill="#ccc"
+          fill={cell.isMine ? '#ff0000' : '#ccc'}
         />
       )
     })
   }, [revealedCells])
 
   const revealedNumbers = useMemo(() => {
-    return Array.from(revealedCells.entries()).map(([key, num]) => {
+    return Array.from(revealedCells.entries()).map(([key, cell]) => {
       const [col, row] = key.split(',').map(Number)
+      if (cell.isMine) return null
       return (
         <Text
           key={`num-${key}`}
@@ -195,7 +216,7 @@ function App() {
           y={row * CELL_SIZE}
           width={CELL_SIZE}
           height={CELL_SIZE}
-          text={String(num)}
+          text={String(cell.number)}
           fontSize={20}
           fontStyle="bold"
           fill="#000"

@@ -333,6 +333,22 @@ function App() {
         onClick={handleMinimapClick}
         aria-label="Minimap navigation"
       >
+        {Array.from(revealedCells.entries()).map(([key, cell]) => {
+          const [col, row] = key.split(',').map(Number)
+          return (
+            <div
+              key={key}
+              style={{
+                position: 'absolute',
+                left: col * CELL_SIZE * scaleX,
+                top: row * CELL_SIZE * scaleY,
+                width: Math.max(1, CELL_SIZE * scaleX),
+                height: Math.max(1, CELL_SIZE * scaleY),
+                backgroundColor: cell.isMine ? '#ff0000' : '#ccc',
+              }}
+            />
+          )
+        })}
         <div
           style={{
             position: 'absolute',

@@ -11,8 +11,18 @@ interface RevealedCell {
 }
 
 interface InitEvent {
+  sessionId: string;
   revealed: RevealedCell[];
   flagged: Array<{ col: number; row: number }>;
+}
+
+interface ScoreUpdateEvent {
+  sessionId: string;
+  score: number;
+}
+
+interface LeaderboardEvent {
+  rankings: Array<{ sessionId: string; score: number; isCurrentPlayer: boolean }>;
 }
 
 function waitForEvent<T>(socket: Socket, event: string, timeout = 3000): Promise<T> {
@@ -270,6 +280,117 @@ describe('game-api WebSocket API', () => {
       } finally {
         newSocket.disconnect();
       }
+    });
+  });
+
+  describe('scoring', () => {
+    it('should receive sessionId in init event', async () => {
+      await waitForConnect(socket);
+      const data = await waitForEvent<InitEvent>(socket, 'init');
+      expect(data.sessionId).toBeDefined();
+      expect(typeof data.sessionId).toBe('string');
+      expect(data.sessionId.length).toBeGreaterThan(0);
+    });
+
+    it('should decrease score by 100 on reveal (mine hit)', async () => {
+      await waitForConnect(socket);
+      const initData = await waitForEvent<InitEvent>(socket, 'init');
+      const sessionId = initData.sessionId;
+
+      socket.emit('reset');
+
+      const startScore = 0;
+      socket.emit('reveal', { col: 100, row: 100 });
+      await waitForEvent<any>(socket, 'cellRevealed');
+
+      const scoreUpdate = await waitForEvent<ScoreUpdateEvent>(socket, 'scoreUpdate');
+      expect(scoreUpdate.sessionId).toBe(sessionId);
+      expect(scoreUpdate.score).toBe(startScore - 100);
+    });
+
+    it('should increase score by 10 on flag', async () => {
+      await waitForConnect(socket);
+      const initData = await waitForEvent<InitEvent>(socket, 'init');
+      const sessionId = initData.sessionId;
+
+      socket.emit('reset');
+
+      socket.emit('flag', { col: 200, row: 200 });
+      await waitForEvent<any>(socket, 'cellFlagged');
+
+      const scoreUpdate = await waitForEvent<ScoreUpdateEvent>(socket, 'scoreUpdate');
+      expect(scoreUpdate.sessionId).toBe(sessionId);
+      expect(scoreUpdate.score).toBe(10);
+    });
+
+    it('should allow negative scores', async () => {
+      await waitForConnect(socket);
+      const initData = await waitForEvent<InitEvent>(socket, 'init');
+      const sessionId = initData.sessionId;
+
+      socket.emit('reset');
+
+      for (let i = 0; i < 5; i++) {
+        const col = 300 + i;
+        socket.emit('reveal', { col, row: 300 });
+        await waitForEvent<any>(socket, 'cellRevealed');
+      }
+
+      const scoreUpdate = await waitForEvent<ScoreUpdateEvent>(socket, 'scoreUpdate');
+      expect(scoreUpdate.sessionId).toBe(sessionId);
+      expect(scoreUpdate.score).toBeLessThan(0);
+    });
+  });
+
+  describe('leaderboard', () => {
+    it('should receive leaderboard event after score change', async () => {
+      await waitForConnect(socket);
+      const initData = await waitForEvent<InitEvent>(socket, 'init');
+
+      socket.emit('reset');
+
+      socket.emit('flag', { col: 400, row: 400 });
+      await waitForEvent<any>(socket, 'cellFlagged');
+
+      const leaderboard = await waitForEvent<LeaderboardEvent>(socket, 'leaderboard');
+      expect(leaderboard.rankings).toBeDefined();
+      expect(Array.isArray(leaderboard.rankings)).toBe(true);
+
+      const currentPlayerEntry = leaderboard.rankings.find(r => r.isCurrentPlayer);
+      expect(currentPlayerEntry).toBeDefined();
+      expect(currentPlayerEntry?.sessionId).toBe(initData.sessionId);
+    });
+
+    it('should sort rankings by score descending', async () => {
+      await waitForConnect(socket);
+
+      socket.emit('reset');
+
+      for (let i = 0; i < 3; i++) {
+        socket.emit('flag', { col: 500 + i, row: 500 });
+        await waitForEvent<any>(socket, 'cellFlagged');
+      }
+
+      const leaderboard = await waitForEvent<LeaderboardEvent>(socket, 'leaderboard');
+      const scores = leaderboard.rankings.map(r => r.score);
+
+      for (let i = 0; i < scores.length - 1; i++) {
+        expect(scores[i]).toBeGreaterThanOrEqual(scores[i + 1]);
+      }
+    });
+
+    it('should display only first 6 characters of sessionId', async () => {
+      await waitForConnect(socket);
+
+      socket.emit('reset');
+
+      socket.emit('flag', { col: 600, row: 600 });
+      await waitForEvent<any>(socket, 'cellFlagged');
+
+      const leaderboard = await waitForEvent<LeaderboardEvent>(socket, 'leaderboard');
+      const currentPlayerEntry = leaderboard.rankings.find(r => r.isCurrentPlayer);
+
+      expect(currentPlayerEntry?.sessionId.length).toBeLessThanOrEqual(6);
     });
   });
 });

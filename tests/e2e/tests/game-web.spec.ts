@@ -109,4 +109,39 @@ test.describe('game-web socket integration', () => {
     await page.keyboard.up('Space');
     await page.waitForTimeout(800);
   });
+
+  test.describe('leaderboard', () => {
+    test('leaderboard is visible in top-right corner', async ({ page }) => {
+      await page.goto('/');
+      await page.waitForTimeout(2000);
+
+      const leaderboard = page.locator('div').filter({ hasText: /排名|#1|Score/i }).first();
+      await expect(leaderboard).toBeVisible();
+    });
+
+    test('current player score is highlighted', async ({ page }) => {
+      await page.goto('/');
+      await page.waitForTimeout(2000);
+
+      const highlightedPlayer = page.locator('[class*="highlight"], [data-current="true"]').first();
+      await expect(highlightedPlayer).toBeVisible();
+    });
+
+    test('right-click flag updates score', async ({ page }) => {
+      await page.goto('/');
+      await page.waitForTimeout(2000);
+
+      const canvas = page.locator('canvas').first();
+      const bbox = await canvas.boundingBox();
+      expect(bbox).not.toBeNull();
+
+      const cellX = bbox!.x + bbox!.width / 2 + 100;
+      const cellY = bbox!.y + bbox!.height / 2 + 100;
+
+      await page.mouse.move(cellX, cellY);
+      await page.waitForTimeout(300);
+      await page.mouse.click(cellX, cellY, { button: 'right' });
+      await page.waitForTimeout(1000);
+    });
+  });
 });

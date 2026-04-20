@@ -358,7 +358,7 @@ describe('game-api WebSocket API', () => {
 
       const currentPlayerEntry = leaderboard.rankings.find(r => r.isCurrentPlayer);
       expect(currentPlayerEntry).toBeDefined();
-      expect(currentPlayerEntry?.sessionId).toBe(initData.sessionId);
+      expect(currentPlayerEntry?.sessionId).toBe(initData.sessionId.slice(0, 6));
     });
 
     it('should sort rankings by score descending', async () => {

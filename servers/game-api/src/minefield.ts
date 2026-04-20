@@ -13,7 +13,7 @@ interface Cell {
   number: number;
 }
 
-class Minefield {
+export class Minefield {
   private cells: Cell[][];
 
   constructor() {

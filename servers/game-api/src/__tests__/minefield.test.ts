@@ -123,4 +123,34 @@ describe('Minefield', () => {
       }
     });
   });
+
+  describe('performance', () => {
+    it('should reveal 100 cells within 10ms each', () => {
+      const cellPositions: { col: number; row: number }[] = [];
+      for (let col = 50; col < 150 && cellPositions.length < 100; col += 3) {
+        for (let row = 50; row < 150 && cellPositions.length < 100; row += 3) {
+          const cell = minefield.getCell(col, row);
+          if (cell && !cell.isMine) {
+            cellPositions.push({ col, row });
+          }
+        }
+      }
+
+      expect(cellPositions.length).toBeGreaterThanOrEqual(100);
+
+      const times: number[] = [];
+      for (const { col, row } of cellPositions) {
+        const start = performance.now();
+        minefield.reveal(col, row);
+        const duration = performance.now() - start;
+        times.push(duration);
+      }
+
+      const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+      const maxTime = Math.max(...times);
+
+      expect(maxTime).toBeLessThan(10);
+      expect(avgTime).toBeLessThan(5);
+    });
+  });
 });

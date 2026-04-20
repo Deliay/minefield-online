@@ -19,8 +19,8 @@ interface RevealedCell {
 }
 
 interface GameState {
-  revealed: Map<string, RevealedCell>;
-  flagged: Set<string>;
+  revealed: Map<number, RevealedCell>;
+  flagged: Set<number>;
 }
 
 export class Minefield {
@@ -121,38 +121,39 @@ export class Minefield {
   }
 
   isRevealed(col: number, row: number): boolean {
-    return this.gameState.revealed.has(this.cellKey(col, row));
+    return this.gameState.revealed.has(col * ROWS + row);
   }
 
   isFlagged(col: number, row: number): boolean {
-    return this.gameState.flagged.has(this.cellKey(col, row));
+    return this.gameState.flagged.has(col * ROWS + row);
   }
 
   reveal(col: number, row: number): RevealedCell[] {
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return [];
-    const key = this.cellKey(col, row);
-    if (this.isRevealed(col, row) || this.isFlagged(col, row)) return [];
+    const idx = col * ROWS + row;
+    if (this.gameState.revealed.has(idx) || this.gameState.flagged.has(idx)) return [];
 
     const cell = this.cells[row][col];
     const results: RevealedCell[] = [];
 
     if (cell.isMine) {
-      this.gameState.revealed.set(key, { isMine: true, number: 0 });
+      this.gameState.revealed.set(idx, { isMine: true, number: 0 });
       results.push({ isMine: true, number: 0 });
       return results;
     }
 
-    const queue: { col: number; row: number }[] = [{ col, row }];
-    const visited = new Set<string>();
+    const queue: number[] = [idx];
+    const visited = new Set<number>();
 
     while (queue.length > 0) {
-      const { col: c, row: r } = queue.shift()!;
-      const k = this.cellKey(c, r);
-      if (visited.has(k)) continue;
-      visited.add(k);
+      const currentIdx = queue.pop()!;
+      if (visited.has(currentIdx)) continue;
+      visited.add(currentIdx);
 
+      const r = currentIdx % ROWS;
+      const c = Math.floor(currentIdx / ROWS);
       const currentCell = this.cells[r][c];
-      this.gameState.revealed.set(k, { isMine: false, number: currentCell.number });
+      this.gameState.revealed.set(currentIdx, { isMine: false, number: currentCell.number });
       results.push({ isMine: false, number: currentCell.number });
 
       if (currentCell.number === 0) {
@@ -162,9 +163,9 @@ export class Minefield {
             const ny = r + dy;
             const nx = c + dx;
             if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS) {
-              const nk = this.cellKey(nx, ny);
-              if (!visited.has(nk) && !this.isRevealed(nx, ny) && !this.isFlagged(nx, ny) && !this.cells[ny][nx].isMine) {
-                queue.push({ col: nx, row: ny });
+              const nIdx = nx * ROWS + ny;
+              if (!visited.has(nIdx) && !this.gameState.revealed.has(nIdx) && !this.gameState.flagged.has(nIdx) && !this.cells[ny][nx].isMine) {
+                queue.push(nIdx);
               }
             }
           }
@@ -177,21 +178,22 @@ export class Minefield {
 
   flag(col: number, row: number): boolean {
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return false;
-    if (this.isRevealed(col, row)) return false;
-    const key = this.cellKey(col, row);
-    if (this.gameState.flagged.has(key)) {
-      this.gameState.flagged.delete(key);
+    const idx = col * ROWS + row;
+    if (this.gameState.revealed.has(idx)) return false;
+    if (this.gameState.flagged.has(idx)) {
+      this.gameState.flagged.delete(idx);
       return false;
     } else {
-      this.gameState.flagged.add(key);
+      this.gameState.flagged.add(idx);
       return true;
     }
   }
 
   getAllRevealed(): Array<{ col: number; row: number; cell: RevealedCell }> {
     const results: Array<{ col: number; row: number; cell: RevealedCell }> = [];
-    for (const [key, cell] of this.gameState.revealed) {
-      const [col, row] = key.split(',').map(Number);
+    for (const [idx, cell] of this.gameState.revealed) {
+      const row = idx % ROWS;
+      const col = Math.floor(idx / ROWS);
       results.push({ col, row, cell });
     }
     return results;
@@ -199,8 +201,9 @@ export class Minefield {
 
   getAllFlagged(): Array<{ col: number; row: number }> {
     const results: Array<{ col: number; row: number }> = [];
-    for (const key of this.gameState.flagged) {
-      const [col, row] = key.split(',').map(Number);
+    for (const idx of this.gameState.flagged) {
+      const row = idx % ROWS;
+      const col = Math.floor(idx / ROWS);
       results.push({ col, row });
     }
     return results;

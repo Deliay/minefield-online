@@ -15,7 +15,7 @@ function App() {
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight })
   const stageRef = useRef<Konva.Stage>(null)
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
-  const [isDraggingEnabled, setIsDraggingEnabled] = useState(false)
+  const [isDraggingEnabled] = useState(true)
   const [flaggedCells, setFlaggedCells] = useState<Set<string>>(new Set())
   const [revealedCells, setRevealedCells] = useState<Map<string, { isMine: boolean; number: number }>>(new Map())
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
@@ -100,24 +100,7 @@ function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === ' ' || e.key === 'Alt') {
-        setIsDraggingEnabled(true)
-      }
-    }
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === ' ' || e.key === 'Alt') {
-        setIsDraggingEnabled(false)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-    }
-  }, [])
+
 
   const handleMouseMove = useCallback(() => {
     const stage = stageRef.current
@@ -296,7 +279,7 @@ function App() {
         width={dimensions.width}
         height={dimensions.height}
         draggable={isDraggingEnabled}
-        style={{ cursor: isDraggingEnabled ? 'grab' : 'default' }}
+        style={{ cursor: 'grab' }}
         onMouseMove={handleMouseMove}
         onContextMenu={handleContextMenu}
         onClick={handleClick}

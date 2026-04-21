@@ -249,7 +249,6 @@ export class Minefield {
     const idx = col * ROWS + row;
     if (this.gameState.revealed.has(idx)) return false;
     if (this.gameState.flagged.has(idx)) {
-      this.gameState.flagged.delete(idx);
       return false;
     } else {
       this.gameState.flagged.add(idx);

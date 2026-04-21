@@ -19,7 +19,7 @@ export function Leaderboard() {
     });
   }, [currentSessionId]);
 
-  const displayRankings = rankings.filter((r) => r.sessionId !== currentSessionId?.slice(0, 6));
+  const displayRankings = rankings;
 
   return (
     <div

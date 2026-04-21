@@ -13,15 +13,16 @@ export interface Ranking {
 
 const sessions = new Map<string, Session>();
 
-export function createSession(socketId: string): Session {
-  const sessionId = crypto.randomUUID();
+export function createSession(socketId: string, existingSessionId?: string): Session {
+  const sessionId = existingSessionId || crypto.randomUUID();
+  const existing = existingSessionId ? sessions.get(existingSessionId) : undefined;
   const session: Session = {
     sessionId,
     socketId,
-    score: 0,
-    createdAt: Date.now(),
+    score: existing?.score ?? 0,
+    createdAt: existing?.createdAt ?? Date.now(),
   };
-  sessions.set(socketId, session);
+  sessions.set(sessionId, session);
   return session;
 }
 
@@ -29,8 +30,15 @@ export function getSession(socketId: string): Session | undefined {
   return sessions.get(socketId);
 }
 
+export function getSessionBySessionId(sessionId: string): Session | undefined {
+  return sessions.get(sessionId);
+}
+
 export function deleteSession(socketId: string): void {
-  sessions.delete(socketId);
+  const session = sessions.get(socketId);
+  if (session) {
+    sessions.delete(session.sessionId);
+  }
 }
 
 export function updateScore(socketId: string, delta: number): Session | undefined {
@@ -40,7 +48,7 @@ export function updateScore(socketId: string, delta: number): Session | undefine
   return session;
 }
 
-export function getLeaderboard(currentSocketId?: string): Ranking[] {
+export function getLeaderboard(currentSessionId?: string): Ranking[] {
   const allSessions = Array.from(sessions.values());
   const sorted = allSessions.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
@@ -49,6 +57,6 @@ export function getLeaderboard(currentSocketId?: string): Ranking[] {
   return sorted.map(s => ({
     sessionId: s.sessionId.slice(0, 6),
     score: s.score,
-    isCurrentPlayer: s.socketId === currentSocketId,
+    isCurrentPlayer: s.sessionId === currentSessionId,
   }));
 }

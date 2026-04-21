@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const SESSION_ID_COOKIE = 'minefield_session_id';
 
 export interface RevealedCell {
   col: number;
@@ -42,6 +43,22 @@ export interface LeaderboardEvent {
   rankings: Ranking[];
 }
 
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
+
+function setCookie(name: string, value: string, days: number = 365): void {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/`;
+}
+
+function deleteCookie(name: string): void {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
+}
+
 class SocketService {
   private socket: Socket | null = null;
   private sessionId: string | null = null;
@@ -60,8 +77,11 @@ class SocketService {
   connect() {
     if (this.socket?.connected) return;
 
+    const storedSessionId = getCookie(SESSION_ID_COOKIE);
+
     this.socket = io(API_URL, {
       transports: ['websocket', 'polling'],
+      auth: { sessionId: storedSessionId || undefined },
     });
 
     this.socket.on('connect', () => {
@@ -74,6 +94,9 @@ class SocketService {
 
     this.socket.on('init', (data: InitEvent) => {
       this.sessionId = data.sessionId;
+      if (data.sessionId !== storedSessionId) {
+        setCookie(SESSION_ID_COOKIE, data.sessionId);
+      }
       this.listeners.onInit?.(data);
     });
 
@@ -97,6 +120,11 @@ class SocketService {
   disconnect() {
     this.socket?.disconnect();
     this.socket = null;
+  }
+
+  clearSession(): void {
+    deleteCookie(SESSION_ID_COOKIE);
+    this.sessionId = null;
   }
 
   onInit(callback: (data: InitEvent) => void) {

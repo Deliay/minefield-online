@@ -2,7 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import minefield from './minefield.js';
-import { createSession, deleteSession, updateScore, getLeaderboard } from './session.js';
+import { createSession, deleteSession, updateScore, getLeaderboard, getSessionBySessionId } from './session.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -13,7 +13,16 @@ const io = new Server(httpServer, {
 io.on('connection', (socket) => {
   console.log('player connected:', socket.id);
 
-  const session = createSession(socket.id);
+  const clientSessionId = socket.handshake.auth.sessionId as string | undefined;
+  const existingSession = clientSessionId ? getSessionBySessionId(clientSessionId) : undefined;
+
+  const session = createSession(socket.id, clientSessionId);
+  if (existingSession) {
+    session.score = existingSession.score;
+    session.createdAt = existingSession.createdAt;
+  }
+
+  console.log('session:', existingSession ? `resumed ${session.sessionId}` : `created ${session.sessionId}`);
 
   socket.emit('init', {
     sessionId: session.sessionId,
@@ -21,7 +30,7 @@ io.on('connection', (socket) => {
     flagged: minefield.getAllFlagged(),
   });
 
-  socket.emit('leaderboard', { rankings: getLeaderboard(socket.id) });
+  socket.emit('leaderboard', { rankings: getLeaderboard(session.sessionId) });
 
   socket.on('reveal', (data: { col: number; row: number }) => {
     const { col, row } = data;
@@ -37,7 +46,7 @@ io.on('connection', (socket) => {
       const updated = updateScore(socket.id, -100);
       if (updated) {
         io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
-        io.emit('leaderboard', { rankings: getLeaderboard(socket.id) });
+        io.emit('leaderboard', { rankings: getLeaderboard(session.sessionId) });
       }
     }
   });
@@ -50,7 +59,7 @@ io.on('connection', (socket) => {
     const updated = updateScore(socket.id, 10);
     if (updated) {
       io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
-      io.emit('leaderboard', { rankings: getLeaderboard(socket.id) });
+      io.emit('leaderboard', { rankings: getLeaderboard(session.sessionId) });
     }
   });
 

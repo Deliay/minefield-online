@@ -10,6 +10,7 @@ interface FlagCellProps {
 export const FlagCell = memo(function FlagCell({ col, row, cellSize }: FlagCellProps) {
   return (
     <Text
+      id={`${col}-${row}`}
       x={col * cellSize}
       y={row * cellSize}
       width={cellSize}
@@ -32,6 +33,7 @@ interface RevealedCellProps {
 export const RevealedCell = memo(function RevealedCell({ col, row, cellSize, isMine }: RevealedCellProps) {
   return (
     <Rect
+      id={`${col}-${row}`}
       x={col * cellSize}
       y={row * cellSize}
       width={cellSize}
@@ -63,6 +65,7 @@ export const NumberCell = memo(function NumberCell({ col, row, cellSize, number 
   if (number === 0) return null
   return (
     <Text
+      id={`${col}-${row}`}
       x={col * cellSize}
       y={row * cellSize}
       width={cellSize}

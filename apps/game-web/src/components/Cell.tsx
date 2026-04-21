@@ -1,5 +1,5 @@
 import { memo, useRef, useEffect } from 'react'
-import { Rect, Text } from 'react-konva'
+import { Rect, Text, Line } from 'react-konva'
 
 interface FlagCellProps {
   col: number
@@ -102,6 +102,51 @@ export const NumberCell = memo(function NumberCell({ col, row, cellSize, number 
       fill={numberColors[number] || '#000'}
       align="center"
       verticalAlign="middle"
+      perfectDrawEnabled={false}
+    />
+  )
+})
+
+interface GridLineProps {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+}
+
+export const GridLine = memo(function GridLine({ x1, y1, x2, y2 }: GridLineProps) {
+  const ref = useRef<any>(null)
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.cache()
+    }
+  }, [])
+  return <Line ref={ref} points={[x1, y1, x2, y2]} stroke="#333" strokeWidth={2} perfectDrawEnabled={false} />
+})
+
+interface PointerRectProps {
+  x: number
+  y: number
+  cellSize: number
+}
+
+export const PointerRect = memo(function PointerRect({ x, y, cellSize }: PointerRectProps) {
+  const ref = useRef<any>(null)
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.cache()
+    }
+  }, [])
+  return (
+    <Rect
+      ref={ref}
+      x={x}
+      y={y}
+      width={cellSize}
+      height={cellSize}
+      fill="rgba(128, 128, 128, 0.5)"
+      stroke="#fff"
+      strokeWidth={2}
       perfectDrawEnabled={false}
     />
   )

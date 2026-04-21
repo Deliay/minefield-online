@@ -1,10 +1,10 @@
-import { Stage, Layer, Rect, Line, Text } from 'react-konva'
+import { Stage, Layer, Text } from 'react-konva'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Konva from 'konva'
 import { socketService } from './services/socket'
 import { Leaderboard } from './components/Leaderboard'
 import { NameModal } from './components/NameModal'
-import { FlagCell, RevealedCell, NumberCell } from './components/Cell'
+import { FlagCell, RevealedCell, NumberCell, GridLine, PointerRect } from './components/Cell'
 
 const CELL_SIZE = 40
 const COLS = 1200
@@ -254,11 +254,11 @@ function App() {
 
   for (let i = 0; i <= COLS; i++) {
     const x = i * CELL_SIZE
-    gridLines.push(<Line key={`v-${i}`} points={[x, 0, x, gridHeight]} stroke="#333" strokeWidth={2} perfectDrawEnabled={false} />)
+    gridLines.push(<GridLine key={`v-${i}`} x1={x} y1={0} x2={x} y2={gridHeight} />)
   }
   for (let i = 0; i <= ROWS; i++) {
     const y = i * CELL_SIZE
-    gridLines.push(<Line key={`h-${i}`} points={[0, y, gridWidth, y]} stroke="#333" strokeWidth={2} perfectDrawEnabled={false} />)
+    gridLines.push(<GridLine key={`h-${i}`} x1={0} y1={y} x2={gridWidth} y2={y} />)
   }
 
   const flaggedRects = Array.from(flaggedCells).map((key) => {
@@ -300,16 +300,7 @@ function App() {
           {revealedRects}
           {revealedNumbers}
           {pointerPos && (
-            <Rect
-              x={pointerPos.x}
-              y={pointerPos.y}
-              width={CELL_SIZE}
-              height={CELL_SIZE}
-              fill="rgba(128, 128, 128, 0.5)"
-              stroke="#fff"
-              strokeWidth={2}
-              perfectDrawEnabled={false}
-            />
+            <PointerRect x={pointerPos.x} y={pointerPos.y} cellSize={CELL_SIZE} />
           )}
           {scorePopups.map((popup) => (
             <Text

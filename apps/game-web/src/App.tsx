@@ -47,22 +47,19 @@ function App() {
   })
 
   const cellRenders = useMemo(() => {
-    const flagged: React.ReactNode[] = []
     const revealed: React.ReactNode[] = []
     const numbers: React.ReactNode[] = []
 
-    for (const key of flaggedCells) {
-      const [col, row] = key.split(',').map(Number)
-      flagged.push(<Cell key={key} col={col} row={row} cellSize={CELL_SIZE} type="flag" />)
-    }
-
     for (const [key, cell] of revealedCells.entries()) {
       const [col, row] = key.split(',').map(Number)
-      revealed.push(<Cell key={key} col={col} row={row} cellSize={CELL_SIZE} type="revealed" isMine={cell.isMine} />)
-      numbers.push(<Cell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} type="number" number={cell.number} />)
+      const isFlagged = flaggedCells.has(key)
+      revealed.push(<Cell key={key} col={col} row={row} cellSize={CELL_SIZE} type={isFlagged ? 'flag' : 'revealed'} isMine={cell.isMine} />)
+      if (cell.number > 0) {
+        numbers.push(<Cell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} type="number" number={cell.number} />)
+      }
     }
 
-    return { flagged, revealed, numbers }
+    return { revealed, numbers }
   }, [flaggedCells, revealedCells])
 
   const cellKey = (col: number, row: number) => `${col},${row}`
@@ -324,7 +321,6 @@ function App() {
       >
         <FastLayer listening={false}>
           {gridLines}
-          {cellRenders.flagged}
           {cellRenders.revealed}
           {cellRenders.numbers}
         </FastLayer>

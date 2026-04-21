@@ -28,6 +28,7 @@ function App() {
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
   const fpsTextRef = useRef<Konva.Text>(null)
   const [showNameModal, setShowNameModal] = useState(false)
+  const [gridLines, setGridLines] = useState<React.ReactNode[]>([])
 
   useEffect(() => {
     const anim = new Konva.Animation((frame) => {
@@ -38,6 +39,22 @@ function App() {
 
     anim.start();
     return () => { anim.stop(); };
+  }, []);
+
+  useEffect(() => {
+    const lines: React.ReactNode[] = []
+    const gridWidth = COLS * CELL_SIZE
+    const gridHeight = ROWS * CELL_SIZE
+
+    for (let i = 0; i <= COLS; i++) {
+      const x = i * CELL_SIZE
+      lines.push(<GridLine key={`v-${i}`} x1={x} y1={0} x2={x} y2={gridHeight} />)
+    }
+    for (let i = 0; i <= ROWS; i++) {
+      const y = i * CELL_SIZE
+      lines.push(<GridLine key={`h-${i}`} x1={0} y1={y} x2={gridWidth} y2={y} />)
+    }
+    setGridLines(lines)
   }, []);
 
   const cellKey = (col: number, row: number) => `${col},${row}`
@@ -260,19 +277,6 @@ function App() {
     [scaleX, scaleY, dimensions]
   )
 
-  const gridLines: React.ReactNode[] = []
-  const gridWidth = COLS * CELL_SIZE
-  const gridHeight = ROWS * CELL_SIZE
-
-  for (let i = 0; i <= COLS; i++) {
-    const x = i * CELL_SIZE
-    gridLines.push(<GridLine key={`v-${i}`} x1={x} y1={0} x2={x} y2={gridHeight} />)
-  }
-  for (let i = 0; i <= ROWS; i++) {
-    const y = i * CELL_SIZE
-    gridLines.push(<GridLine key={`h-${i}`} x1={0} y1={y} x2={gridWidth} y2={y} />)
-  }
-
   const flaggedRects = Array.from(flaggedCells).map((key) => {
     const [col, row] = key.split(',').map(Number)
     return <FlagCell key={key} col={col} row={row} cellSize={CELL_SIZE} />
@@ -305,7 +309,6 @@ function App() {
         onMouseMove={handleMouseMove}
         onContextMenu={handleContextMenu}
         onClick={handleClick}
-        listening={false}
       >
         <Layer listening={false}>
           {gridLines}
@@ -313,6 +316,8 @@ function App() {
           {revealedRects}
           {revealedNumbers}
           <Text ref={fpsTextRef} x={10} y={10} text="FPS: 0" fontSize={16} fill="#fff" />
+        </Layer>
+        <Layer listening={false} imageSmoothingEnabled={false}>
           {pointerPos && (
             <PointerRect x={pointerPos.x} y={pointerPos.y} cellSize={CELL_SIZE} />
           )}

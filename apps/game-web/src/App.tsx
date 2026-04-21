@@ -26,7 +26,19 @@ function App() {
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
   const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
+  const fpsTextRef = useRef<Konva.Text>(null)
   const [showNameModal, setShowNameModal] = useState(false)
+
+  useEffect(() => {
+    const anim = new Konva.Animation((frame) => {
+      if (fpsTextRef.current) {
+        fpsTextRef.current.text('FPS: ' + frame.frameRate.toFixed(1));
+      }
+    }, stageRef.current?.getLayers()[0]?.getLayer());
+
+    anim.start();
+    return () => { anim.stop(); };
+  }, []);
 
   const cellKey = (col: number, row: number) => `${col},${row}`
 
@@ -319,6 +331,7 @@ function App() {
               opacity={popup.opacity}
             />
           ))}
+          <Text ref={fpsTextRef} x={dimensions.width - 80} y={10} text="FPS: 0" fontSize={16} fill="#fff" />
         </Layer>
       </Stage>
       <button

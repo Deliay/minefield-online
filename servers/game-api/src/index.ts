@@ -30,7 +30,7 @@ io.on('connection', (socket) => {
     flagged: minefield.getAllFlagged(),
   });
 
-  socket.emit('leaderboard', { rankings: getLeaderboard(session.sessionId) });
+  io.emit('leaderboard', { rankings: getLeaderboard(session.sessionId) });
 
   socket.on('reveal', (data: { col: number; row: number }) => {
     const { col, row } = data;
@@ -71,6 +71,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('player disconnected:', socket.id);
     deleteSession(socket.id);
+    io.emit('leaderboard', { rankings: getLeaderboard() });
   });
 });
 

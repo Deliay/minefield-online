@@ -299,6 +299,8 @@ function App() {
           {flaggedRects}
           {revealedRects}
           {revealedNumbers}
+        </Layer>
+        <Layer>
           {pointerPos && (
             <PointerRect x={pointerPos.x} y={pointerPos.y} cellSize={CELL_SIZE} />
           )}

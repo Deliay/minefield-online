@@ -43,7 +43,7 @@ io.on('connection', (socket) => {
 
     const hitMine = results.some(cell => cell.isMine);
     if (hitMine) {
-      const updated = updateScore(socket.id, -100);
+      const updated = updateScore(session.sessionId, -100);
       if (updated) {
         io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
         io.emit('leaderboard', { rankings: getLeaderboard(session.sessionId) });
@@ -56,7 +56,7 @@ io.on('connection', (socket) => {
     const isFlagged = minefield.flag(col, row);
     io.emit('cellFlagged', { col, row, isFlagged });
 
-    const updated = updateScore(socket.id, 10);
+    const updated = updateScore(session.sessionId, 10);
     if (updated) {
       io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
       io.emit('leaderboard', { rankings: getLeaderboard(session.sessionId) });
@@ -70,7 +70,9 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('player disconnected:', socket.id);
-    deleteSession(socket.id);
+    // NOTE: We intentionally do NOT delete the session here for session persistence.
+    // The session will persist across page refreshes so users can resume their score.
+    // Sessions are only truly deleted when the server restarts.
     io.emit('leaderboard', { rankings: getLeaderboard() });
   });
 });

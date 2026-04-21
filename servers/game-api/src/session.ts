@@ -26,8 +26,8 @@ export function createSession(socketId: string, existingSessionId?: string): Ses
   return session;
 }
 
-export function getSession(socketId: string): Session | undefined {
-  return sessions.get(socketId);
+export function getSession(sessionId: string): Session | undefined {
+  return sessions.get(sessionId);
 }
 
 export function getSessionBySessionId(sessionId: string): Session | undefined {

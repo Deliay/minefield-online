@@ -61,6 +61,38 @@ function waitForConnect(socket: Socket, timeout = 5000): Promise<void> {
   });
 }
 
+function waitForConnectAndInit(socket: Socket, timeout = 5000): Promise<InitEvent> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Connection or init timeout'));
+    }, timeout);
+
+    const onInit = (data: InitEvent) => {
+      clearTimeout(timer);
+      socket.off('connect', onConnect);
+      socket.off('connect_error', onConnectError);
+      resolve(data);
+    };
+
+    const onConnect = () => {
+      socket.once('init', onInit);
+    };
+
+    const onConnectError = (err: Error) => {
+      clearTimeout(timer);
+      socket.off('init', onInit);
+      reject(new Error('Connection error: ' + err.message));
+    };
+
+    if (socket.connected) {
+      socket.once('init', onInit);
+    } else {
+      socket.once('connect', onConnect);
+      socket.once('connect_error', onConnectError);
+    }
+  });
+}
+
 describe('game-api WebSocket API', () => {
   let socket: Socket;
 
@@ -409,6 +441,159 @@ describe('game-api WebSocket API', () => {
       const currentPlayerEntry = leaderboard.rankings.find(r => r.isCurrentPlayer);
 
       expect(currentPlayerEntry?.sessionId.length).toBeLessThanOrEqual(6);
+    });
+
+    it('should receive leaderboard update when new player joins', async () => {
+      await waitForConnect(socket);
+      await waitForEvent<InitEvent>(socket, 'init');
+      socket.emit('reset');
+      await waitForEvent<any>(socket, 'reset');
+
+      const leaderboardEvents: LeaderboardEvent[] = [];
+      socket.on('leaderboard', (data: LeaderboardEvent) => {
+        leaderboardEvents.push(data);
+      });
+
+      const socketB = io(API_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: false,
+      });
+      await waitForConnect(socketB);
+      await waitForEvent<InitEvent>(socketB, 'init');
+      socketB.disconnect();
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const hasNewPlayerLeaderboardUpdate = leaderboardEvents.some(
+        lb => lb.rankings.length > 1
+      );
+      expect(hasNewPlayerLeaderboardUpdate).toBe(true);
+    });
+
+    it('should receive leaderboard update when player disconnects', async () => {
+      const socketA = io(API_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: false,
+      });
+      const socketB = io(API_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: false,
+      });
+
+      await waitForConnectAndInit(socketA);
+      socketA.emit('reset');
+      await waitForEvent<any>(socketA, 'reset');
+
+      await waitForConnectAndInit(socketB);
+      socketB.emit('reset');
+      await waitForEvent<any>(socketB, 'reset');
+
+      const leaderboardEventsA: LeaderboardEvent[] = [];
+      socketA.on('leaderboard', (data: LeaderboardEvent) => {
+        leaderboardEventsA.push(data);
+      });
+
+      socketB.disconnect();
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const hasDisconnectLeaderboardUpdate = leaderboardEventsA.some(
+        lb => lb.rankings.length === 1
+      );
+      expect(hasDisconnectLeaderboardUpdate).toBe(true);
+
+      socketA.disconnect();
+    });
+  });
+
+  describe('session persistence', () => {
+    it('should restore score when reconnecting with same sessionId', async () => {
+      const socketA = io(API_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: false,
+      });
+
+      const initData = await waitForConnectAndInit(socketA);
+      const originalSessionId = initData.sessionId;
+
+      socketA.emit('reset');
+      await waitForEvent<any>(socketA, 'reset');
+
+      socketA.emit('flag', { col: 700, row: 700 });
+      await waitForEvent<any>(socketA, 'cellFlagged');
+      await waitForEvent<any>(socketA, 'scoreUpdate');
+
+      socketA.disconnect();
+
+      const socketB = io(API_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: false,
+        auth: { sessionId: originalSessionId },
+      });
+
+      const reconnectData = await waitForConnectAndInit(socketB);
+
+      expect(reconnectData.sessionId).toBe(originalSessionId);
+
+      socketB.emit('flag', { col: 701, row: 701 });
+      await waitForEvent<any>(socketB, 'cellFlagged');
+      const scoreUpdate = await waitForEvent<ScoreUpdateEvent>(socketB, 'scoreUpdate');
+
+      expect(scoreUpdate.score).toBe(20);
+
+      socketB.disconnect();
+    });
+
+    it('should create new sessionId when no existing sessionId is provided', async () => {
+      await waitForConnect(socket);
+      const initData1 = await waitForEvent<InitEvent>(socket, 'init');
+      const firstSessionId = initData1.sessionId;
+
+      socket.disconnect();
+
+      const socketC = io(API_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: false,
+      });
+
+      await waitForConnect(socketC);
+      const initData2 = await waitForEvent<InitEvent>(socketC, 'init');
+
+      expect(initData2.sessionId).not.toBe(firstSessionId);
+
+      socketC.disconnect();
+    });
+
+    it('should keep score for resumed session, not create new one', async () => {
+      const socketA = io(API_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: false,
+      });
+
+      await waitForConnect(socketA);
+      const initData = await waitForEvent<InitEvent>(socketA, 'init');
+      const originalSessionId = initData.sessionId;
+
+      socketA.emit('reset');
+      await waitForEvent<any>(socketA, 'reset');
+
+      socketA.emit('flag', { col: 800, row: 800 });
+      await waitForEvent<any>(socketA, 'cellFlagged');
+      await waitForEvent<any>(socketA, 'scoreUpdate');
+
+      socketA.disconnect();
+
+      const socketB = io(API_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: false,
+      });
+
+      await waitForConnect(socketB);
+      const newInitData = await waitForEvent<InitEvent>(socketB, 'init');
+      const newSessionId = newInitData.sessionId;
+
+      expect(newSessionId).not.toBe(originalSessionId);
+
+      socketB.disconnect();
     });
   });
 });

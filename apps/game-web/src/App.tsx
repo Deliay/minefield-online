@@ -23,6 +23,9 @@ function App() {
   const [isDragging, setIsDragging] = useState(false)
   const [flaggedCells, setFlaggedCells] = useState<Set<string>>(new Set())
   const [revealedCells, setRevealedCells] = useState<Map<string, { isMine: boolean; number: number }>>(new Map())
+  const [flaggedRects, setFlaggedRects] = useState<React.ReactNode[]>([])
+  const [revealedRects, setRevealedRects] = useState<React.ReactNode[]>([])
+  const [revealedNumbers, setRevealedNumbers] = useState<React.ReactNode[]>([])
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
   const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
@@ -285,20 +288,26 @@ function App() {
     [scaleX, scaleY, dimensions]
   )
 
-  const flaggedRects = Array.from(flaggedCells).map((key) => {
-    const [col, row] = key.split(',').map(Number)
-    return <FlagCell key={key} col={col} row={row} cellSize={CELL_SIZE} />
-  })
-
-  const revealedRects = Array.from(revealedCells.entries()).map(([key, cell]) => {
-    const [col, row] = key.split(',').map(Number)
-    return <RevealedCell key={key} col={col} row={row} cellSize={CELL_SIZE} isMine={cell.isMine} />
-  })
-
-  const revealedNumbers = Array.from(revealedCells.entries()).map(([key, cell]) => {
-    const [col, row] = key.split(',').map(Number)
-    return <NumberCell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} number={cell.number} />
-  })
+  useEffect(() => {
+    setFlaggedRects(
+      Array.from(flaggedCells).map((key) => {
+        const [col, row] = key.split(',').map(Number)
+        return <FlagCell key={key} col={col} row={row} cellSize={CELL_SIZE} />
+      })
+    );
+    setRevealedRects(
+      Array.from(revealedCells.entries()).map(([key, cell]) => {
+        const [col, row] = key.split(',').map(Number)
+        return <RevealedCell key={key} col={col} row={row} cellSize={CELL_SIZE} isMine={cell.isMine} />
+      })
+    );
+    setRevealedNumbers(
+      Array.from(revealedCells.entries()).map(([key, cell]) => {
+        const [col, row] = key.split(',').map(Number)
+        return <NumberCell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} number={cell.number} />
+      })
+    );
+  }, [flaggedCells, revealedCells]);
 
   return (
     <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'black' }}>

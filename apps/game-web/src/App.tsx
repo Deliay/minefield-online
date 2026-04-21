@@ -26,8 +26,8 @@ function App() {
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
   const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
-  const fpsTextRef = useRef<Konva.Text>(null)
   const [showNameModal, setShowNameModal] = useState(false)
+  const [fps, setFps] = useState(0)
   const [gridLines] = useState<React.ReactNode[]>(() => {
     const lines: React.ReactNode[] = []
     const gridWidth = COLS * CELL_SIZE
@@ -46,9 +46,7 @@ function App() {
 
   useEffect(() => {
     const anim = new Konva.Animation((frame) => {
-      if (fpsTextRef.current) {
-        fpsTextRef.current.text('FPS: ' + frame.frameRate.toFixed(1));
-      }
+      setFps(frame.frameRate);
     }, stageRef.current?.getLayers()[0]?.getLayer());
 
     anim.start();
@@ -313,7 +311,6 @@ function App() {
           {flaggedRects}
           {revealedRects}
           {revealedNumbers}
-          <Text ref={fpsTextRef} x={10} y={10} text="FPS: 0" fontSize={16} fill="#fff" />
         </Layer>
         <Layer listening={false} imageSmoothingEnabled={false}>
           {pointerPos && (
@@ -336,6 +333,9 @@ function App() {
           ))}
         </Layer>
       </Stage>
+      <div style={{ position: 'absolute', top: 10, left: 10, color: 'white', fontSize: 16, fontFamily: 'monospace' }}>
+        FPS: {fps.toFixed(1)}
+      </div>
       <button
         type="button"
         style={{

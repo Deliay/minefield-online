@@ -19,6 +19,7 @@ export const FlagCell = memo(function FlagCell({ col, row, cellSize }: FlagCellP
       fontSize={24}
       align="center"
       verticalAlign="middle"
+      perfectDrawEnabled={false}
     />
   )
 })
@@ -39,6 +40,7 @@ export const RevealedCell = memo(function RevealedCell({ col, row, cellSize, isM
       width={cellSize}
       height={cellSize}
       fill={isMine ? '#ff0000' : '#ccc'}
+      perfectDrawEnabled={false}
     />
   )
 })
@@ -76,6 +78,7 @@ export const NumberCell = memo(function NumberCell({ col, row, cellSize, number 
       fill={numberColors[number] || '#000'}
       align="center"
       verticalAlign="middle"
+      perfectDrawEnabled={false}
     />
   )
 })

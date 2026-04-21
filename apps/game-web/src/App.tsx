@@ -294,8 +294,8 @@ function App() {
         onContextMenu={handleContextMenu}
         onClick={handleClick}
       >
+        <Layer listening={false}>{gridLines}</Layer>
         <Layer>
-          {gridLines}
           {flaggedRects}
           {revealedRects}
           {revealedNumbers}

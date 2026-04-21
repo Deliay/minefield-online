@@ -11,7 +11,7 @@ export interface Ranking {
   isCurrentPlayer: boolean;
 }
 
-const sessions = new Map<string, Session>();
+export const sessions = new Map<string, Session>();
 
 export function createSession(socketId: string, existingSessionId?: string): Session {
   const sessionId = existingSessionId || crypto.randomUUID();
@@ -34,15 +34,12 @@ export function getSessionBySessionId(sessionId: string): Session | undefined {
   return sessions.get(sessionId);
 }
 
-export function deleteSession(socketId: string): void {
-  const session = sessions.get(socketId);
-  if (session) {
-    sessions.delete(session.sessionId);
-  }
+export function deleteSession(sessionId: string): void {
+  sessions.delete(sessionId);
 }
 
-export function updateScore(socketId: string, delta: number): Session | undefined {
-  const session = sessions.get(socketId);
+export function updateScore(sessionId: string, delta: number): Session | undefined {
+  const session = sessions.get(sessionId);
   if (!session) return undefined;
   session.score += delta;
   return session;

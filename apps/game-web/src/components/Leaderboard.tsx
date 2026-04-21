@@ -5,20 +5,20 @@ import { socketService } from '../services/socket';
 export function Leaderboard() {
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [currentPlayerScore, setCurrentPlayerScore] = useState<number>(0);
+  const currentSessionId = socketService.getSessionId();
 
   useEffect(() => {
     socketService.onLeaderboard((data) => {
       const sortedRankings = [...data.rankings].sort((a, b) => b.score - a.score);
       setRankings(sortedRankings);
 
-      const currentPlayer = data.rankings.find((r) => r.isCurrentPlayer);
+      const currentPlayer = data.rankings.find((r) => r.sessionId === currentSessionId);
       if (currentPlayer) {
         setCurrentPlayerScore(currentPlayer.score);
       }
     });
-  }, []);
+  }, [currentSessionId]);
 
-  const currentSessionId = socketService.getSessionId();
   const displayRankings = rankings.filter((r) => !r.isCurrentPlayer);
 
   return (
@@ -50,7 +50,7 @@ export function Leaderboard() {
               display: 'flex',
               justifyContent: 'space-between',
               padding: '4px 8px',
-              backgroundColor: ranking.isCurrentPlayer ? '#4a4' : 'transparent',
+              backgroundColor: ranking.sessionId === currentSessionId ? '#4a4' : 'transparent',
               borderRadius: 4,
             }}
           >

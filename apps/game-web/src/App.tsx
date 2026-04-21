@@ -28,6 +28,8 @@ function App() {
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
   const [showNameModal, setShowNameModal] = useState(false)
   const [fps, setFps] = useState(0)
+  const [showFps, setShowFps] = useState(true)
+  const [fpsPos, setFpsPos] = useState({ x: 10, y: 10 })
   const [gridLines] = useState<React.ReactNode[]>(() => {
     const lines: React.ReactNode[] = []
     const gridWidth = COLS * CELL_SIZE
@@ -46,12 +48,18 @@ function App() {
 
   useEffect(() => {
     const anim = new Konva.Animation((frame) => {
-      setFps(frame.frameRate);
+      if (showFps) {
+        setFps(frame.frameRate);
+      }
+      const stage = stageRef.current;
+      if (stage) {
+        setFpsPos({ x: -stage.x() + 10, y: -stage.y() + 10 });
+      }
     }, stageRef.current?.getLayers()[0]?.getLayer());
 
     anim.start();
     return () => { anim.stop(); };
-  }, []);
+  }, [showFps]);
 
   const cellKey = (col: number, row: number) => `${col},${row}`
 
@@ -63,6 +71,10 @@ function App() {
 
   const handleEditName = () => {
     setShowNameModal(true);
+  };
+
+  const toggleFps = () => {
+    setShowFps((prev) => !prev);
   };
 
   useEffect(() => {
@@ -332,10 +344,19 @@ function App() {
             />
           ))}
         </Layer>
+        <Layer>
+          {showFps && (
+            <Text
+              x={fpsPos.x}
+              y={fpsPos.y}
+              text={`FPS: ${fps.toFixed(1)}`}
+              fontSize={16}
+              fill="#fff"
+              onClick={toggleFps}
+            />
+          )}
+        </Layer>
       </Stage>
-      <div style={{ position: 'absolute', top: 10, left: 10, color: 'white', fontSize: 16, fontFamily: 'monospace' }}>
-        FPS: {fps.toFixed(1)}
-      </div>
       <button
         type="button"
         style={{

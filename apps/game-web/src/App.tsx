@@ -303,7 +303,7 @@ function App() {
         width={window.innerWidth}
         height={window.innerHeight}
         draggable={isDraggingEnabled}
-        style={{ cursor: isDragging ? 'grab' : 'pointer' }}
+        style={{ cursor: isDragging ? 'grab' : 'default' }}
         onMouseMove={handleMouseMove}
         onContextMenu={handleContextMenu}
         onClick={handleClick}

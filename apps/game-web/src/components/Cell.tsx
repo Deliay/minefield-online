@@ -125,15 +125,9 @@ interface PointerRectProps {
 }
 
 export const PointerRect = memo(function PointerRect({ x, y, cellSize }: PointerRectProps) {
-  const ref = useRef<any>(null)
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.cache()
-    }
-  }, [])
   return (
     <Rect
-      ref={ref}
+      key={"pointer"}
       x={x}
       y={y}
       width={cellSize}

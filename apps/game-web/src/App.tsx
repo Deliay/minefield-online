@@ -327,7 +327,7 @@ function App() {
           {revealedRects}
           {revealedNumbers}
         </Layer>
-        <Layer listening={false} imageSmoothingEnabled={false}>
+        <Layer listening={false}>
           {pointerPos && (
             <PointerRect x={pointerPos.x} y={pointerPos.y} cellSize={CELL_SIZE} />
           )}

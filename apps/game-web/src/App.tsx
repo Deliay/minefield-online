@@ -23,14 +23,11 @@ function App() {
   const [isDragging, setIsDragging] = useState(false)
   const [flaggedCells, setFlaggedCells] = useState<Set<string>>(new Set())
   const [revealedCells, setRevealedCells] = useState<Map<string, { isMine: boolean; number: number }>>(new Map())
-  const [flaggedRects, setFlaggedRects] = useState<React.ReactNode[]>([])
-  const [revealedRects, setRevealedRects] = useState<React.ReactNode[]>([])
-  const [revealedNumbers, setRevealedNumbers] = useState<React.ReactNode[]>([])
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
   const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
+  const fpsTextRef = useRef<Konva.Text>(null)
   const [showNameModal, setShowNameModal] = useState(false)
-  const [fps, setFps] = useState(0)
   const [showFps, setShowFps] = useState(true)
   const [fpsPos, setFpsPos] = useState({ x: 10, y: 10 })
   const [gridLines] = useState<React.ReactNode[]>(() => {
@@ -49,14 +46,32 @@ function App() {
     return lines
   })
 
+  const flaggedRects = useMemo(() =>
+    Array.from(flaggedCells).map((key) => {
+      const [col, row] = key.split(',').map(Number)
+      return <FlagCell key={key} col={col} row={row} cellSize={CELL_SIZE} />
+    }), [flaggedCells])
+
+  const revealedRects = useMemo(() =>
+    Array.from(revealedCells.entries()).map(([key, cell]) => {
+      const [col, row] = key.split(',').map(Number)
+      return <RevealedCell key={key} col={col} row={row} cellSize={CELL_SIZE} isMine={cell.isMine} />
+    }), [revealedCells])
+
+  const revealedNumbers = useMemo(() =>
+    Array.from(revealedCells.entries()).map(([key, cell]) => {
+      const [col, row] = key.split(',').map(Number)
+      return <NumberCell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} number={cell.number} />
+    }), [revealedCells])
+
   useEffect(() => {
     const anim = new Konva.Animation((frame) => {
-      if (showFps) {
-        setFps(frame.frameRate);
-      }
       const stage = stageRef.current;
       if (stage) {
         setFpsPos({ x: -stage.x() + 10, y: -stage.y() + 10 });
+      }
+      if (showFps && fpsTextRef.current) {
+        fpsTextRef.current.text(`FPS: ${frame.frameRate.toFixed(1)}`);
       }
     }, stageRef.current?.getLayers()[0]?.getLayer());
 
@@ -288,27 +303,6 @@ function App() {
     [scaleX, scaleY, dimensions]
   )
 
-  useEffect(() => {
-    setFlaggedRects(
-      Array.from(flaggedCells).map((key) => {
-        const [col, row] = key.split(',').map(Number)
-        return <FlagCell key={key} col={col} row={row} cellSize={CELL_SIZE} />
-      })
-    );
-    setRevealedRects(
-      Array.from(revealedCells.entries()).map(([key, cell]) => {
-        const [col, row] = key.split(',').map(Number)
-        return <RevealedCell key={key} col={col} row={row} cellSize={CELL_SIZE} isMine={cell.isMine} />
-      })
-    );
-    setRevealedNumbers(
-      Array.from(revealedCells.entries()).map(([key, cell]) => {
-        const [col, row] = key.split(',').map(Number)
-        return <NumberCell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} number={cell.number} />
-      })
-    );
-  }, [flaggedCells, revealedCells]);
-
   return (
     <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'black' }}>
       <Leaderboard onEditName={handleEditName} />
@@ -353,12 +347,13 @@ function App() {
             />
           ))}
         </Layer>
-        <Layer>
+        <Layer listening={false} >
           {showFps && (
             <Text
+              ref={fpsTextRef}
               x={fpsPos.x}
               y={fpsPos.y}
-              text={`FPS: ${fps.toFixed(1)}`}
+              text="FPS: 0"
               fontSize={16}
               fill="#fff"
               onClick={toggleFps}

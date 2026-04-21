@@ -115,13 +115,7 @@ interface GridLineProps {
 }
 
 export const GridLine = memo(function GridLine({ x1, y1, x2, y2 }: GridLineProps) {
-  const ref = useRef<any>(null)
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.cache()
-    }
-  }, [])
-  return <Line ref={ref} points={[x1, y1, x2, y2]} stroke="#333" strokeWidth={2} perfectDrawEnabled={false} />
+  return <Line points={[x1, y1, x2, y2]} stroke="#333" strokeWidth={2} perfectDrawEnabled={false} />
 })
 
 interface PointerRectProps {

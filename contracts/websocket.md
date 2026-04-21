@@ -11,8 +11,9 @@
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `reveal` | `{ col: number, row: number }` | Reveal cell at position (score: -100) |
+| `reveal` | `{ col: number, row: number }` | Reveal cell at position (score: -100 if mine) |
 | `flag` | `{ col: number, row: number }` | Toggle flag on cell (score: +10) |
+| `markAndReveal` | `{ col: number, row: number }` | Mark cell as suspected non-mine and reveal (score: -20 if safe, -120 if mine) |
 | `reset` | - | Reset game state for all clients |
 
 ### Server → Client
@@ -87,6 +88,8 @@ const CHUNK_MINES = 99;
 |--------|--------------|
 | Left click (reveal mine) | -100 |
 | Right click (flag) | +10 |
+| Middle click (markAndReveal safe) | -20 |
+| Middle click (markAndReveal mine) | -120 |
 
 - Score can be negative
 - Tie-breaker: earlier creation time ranks higher
@@ -95,7 +98,9 @@ const CHUNK_MINES = 99;
 
 - Session is created automatically on WebSocket connection
 - Session contains: `sessionId`, `socketId`, `score` (initial: 0), `createdAt`
-- Session is destroyed on disconnect
+- Session persists across page refreshes (stored in cookie)
+- Session is NOT destroyed on disconnect (preserves score for returning users)
+- Sessions are only cleared when server restarts
 - Only first 6 characters of `sessionId` are displayed publicly
 
 ## Leaderboard Rules
@@ -113,6 +118,7 @@ const CHUNK_MINES = 99;
 - `reveal`: On safe cell, uses flood-fill to expand and returns all revealed cells
 - `flag`: Toggles flag state; returns `isFlagged: true` if now flagged, `false` if unflagged
 - `flag`: Cannot flag already revealed cells
+- `markAndReveal`: Costs 20 points to reveal a cell; if cell is mine, additional -100 penalty applies (total -120)
 - All events are broadcast to all connected clients (global state)
 - New clients receive full `init` state including all previously revealed/flagged cells
 - After `init`, client receives `leaderboard` event with current rankings

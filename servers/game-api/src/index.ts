@@ -63,6 +63,24 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('markAndReveal', (data: { col: number; row: number }) => {
+    const { col, row } = data;
+    if (minefield.isRevealed(col, row)) {
+      io.emit('cellRevealed', { col, row, cells: [] });
+      return;
+    }
+    const results = minefield.reveal(col, row);
+    io.emit('cellRevealed', { col, row, cells: results });
+
+    const hitMine = results.some(cell => cell.isMine);
+    const scoreDelta = hitMine ? -120 : -20;
+    const updated = updateScore(session.sessionId, scoreDelta);
+    if (updated) {
+      io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
+      io.emit('leaderboard', { rankings: getLeaderboard(session.sessionId) });
+    }
+  });
+
   socket.on('reset', () => {
     minefield.reset();
     io.emit('reset');

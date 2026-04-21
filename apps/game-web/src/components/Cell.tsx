@@ -18,6 +18,7 @@ export const FlagCell = memo(function FlagCell({ col, row, cellSize }: FlagCellP
     <Text
       ref={ref}
       id={`${col}-${row}`}
+      key={`${col}-${row}`}
       x={col * cellSize}
       y={row * cellSize}
       width={cellSize}
@@ -49,6 +50,7 @@ export const RevealedCell = memo(function RevealedCell({ col, row, cellSize, isM
     <Rect
       ref={ref}
       id={`${col}-${row}`}
+      key={`${col}-${row}`}
       x={col * cellSize}
       y={row * cellSize}
       width={cellSize}
@@ -89,6 +91,7 @@ export const NumberCell = memo(function NumberCell({ col, row, cellSize, number 
     <Text
       ref={ref}
       id={`${col}-${row}`}
+      key={`${col}-${row}`}
       x={col * cellSize}
       y={row * cellSize}
       width={cellSize}

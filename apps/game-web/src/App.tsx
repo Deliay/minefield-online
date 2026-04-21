@@ -26,10 +26,7 @@ function App() {
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
   const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
-  const fpsTextRef = useRef<Konva.Text>(null)
   const [showNameModal, setShowNameModal] = useState(false)
-  const [showFps, setShowFps] = useState(true)
-  const [fpsPos, setFpsPos] = useState({ x: 10, y: 10 })
   const [gridLines] = useState<React.ReactNode[]>(() => {
     const lines: React.ReactNode[] = []
     const gridWidth = COLS * CELL_SIZE
@@ -49,39 +46,30 @@ function App() {
   const cellRenders = useMemo(() => {
     const revealed: React.ReactNode[] = []
     const numbers: React.ReactNode[] = []
+    console.log('memo updated')
+    for (const key of flaggedCells) {
+      const [col, row] = key.split(',').map(Number)
+      revealed.push(<Cell key={key} col={col} row={row} cellSize={CELL_SIZE} type='flag' />)
+    }
+    
 
     for (const [key, cell] of revealedCells.entries()) {
       const [col, row] = key.split(',').map(Number)
-      const isFlagged = flaggedCells.has(key)
-      revealed.push(<Cell key={key} col={col} row={row} cellSize={CELL_SIZE} type={isFlagged ? 'flag' : 'revealed'} isMine={cell.isMine} />)
-      if (cell.number > 0) {
-        numbers.push(<Cell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} type="number" number={cell.number} />)
-      }
+
+      revealed.push(<Cell 
+        key={key} 
+        col={col} 
+        row={row} 
+        cellSize={CELL_SIZE} 
+        type='revealed'
+        isMine={cell.isMine}
+        number={cell.number} />)
     }
 
     return { revealed, numbers }
   }, [flaggedCells, revealedCells])
 
   const cellKey = (col: number, row: number) => `${col},${row}`
-
-  const toggleFps = () => {
-    setShowFps((prev) => !prev);
-  };
-
-  useEffect(() => {
-    const anim = new Konva.Animation((frame) => {
-      const stage = stageRef.current;
-      if (stage) {
-        setFpsPos({ x: -stage.x() + 10, y: -stage.y() + 10 });
-      }
-      if (showFps && fpsTextRef.current) {
-        fpsTextRef.current.text(`FPS: ${frame.frameRate.toFixed(1)}`);
-      }
-    }, stageRef.current?.getLayers()[0]?.getLayer());
-
-    anim.start();
-    return () => { anim.stop(); };
-  }, [showFps]);
 
   const handleNameSubmit = (name: string) => {
     socketService.setPlayerName(name);
@@ -321,8 +309,9 @@ function App() {
       >
         <FastLayer listening={false}>
           {gridLines}
+        </FastLayer>
+        <FastLayer listening={false}>
           {cellRenders.revealed}
-          {cellRenders.numbers}
         </FastLayer>
         <FastLayer listening={false}>
           {pointerPos && (
@@ -343,19 +332,6 @@ function App() {
               opacity={popup.opacity}
             />
           ))}
-        </FastLayer>
-        <FastLayer listening={false}>
-          {showFps && (
-            <Text
-              ref={fpsTextRef}
-              x={fpsPos.x}
-              y={fpsPos.y}
-              text="FPS: 0"
-              fontSize={16}
-              fill="#fff"
-              onClick={toggleFps}
-            />
-          )}
         </FastLayer>
       </Stage>
       <button

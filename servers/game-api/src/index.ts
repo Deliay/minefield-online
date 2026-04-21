@@ -85,6 +85,21 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('chord', (data: { col: number; row: number }) => {
+    const { col, row } = data;
+    const results = minefield.chord(col, row);
+    io.emit('cellRevealed', { col, row, cells: results });
+
+    const hitMine = results.some(cell => cell.isMine);
+    if (hitMine) {
+      const updated = updateScore(session.sessionId, -100);
+      if (updated) {
+        io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
+        io.emit('leaderboard', { rankings: getLeaderboard(session.sessionId) });
+      }
+    }
+  });
+
   socket.on('reset', () => {
     minefield.reset();
     io.emit('reset');

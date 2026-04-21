@@ -206,6 +206,44 @@ export class Minefield {
     return results;
   }
 
+  chord(col: number, row: number): RevealedCell[] {
+    const idx = col * ROWS + row;
+    if (!this.gameState.revealed.has(idx)) return [];
+
+    const cell = this.cells[row][col];
+    if (cell.isMine || cell.number === 0) return [];
+
+    let flaggedAndRevealedMines = 0;
+    const toReveal: { col: number; row: number }[] = [];
+
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const ny = row + dy;
+        const nx = col + dx;
+        if (ny < 0 || ny >= ROWS || nx < 0 || nx >= COLS) continue;
+
+        const nIdx = nx * ROWS + ny;
+        if (this.gameState.flagged.has(nIdx)) {
+          flaggedAndRevealedMines++;
+        } else if (this.gameState.revealed.has(nIdx) && this.cells[ny][nx].isMine) {
+          flaggedAndRevealedMines++;
+        } else if (!this.gameState.revealed.has(nIdx)) {
+          toReveal.push({ col: nx, row: ny });
+        }
+      }
+    }
+
+    if (flaggedAndRevealedMines !== cell.number) return [];
+
+    const results: RevealedCell[] = [];
+    for (const { col: c, row: r } of toReveal) {
+      const revealResults = this.reveal(c, r);
+      results.push(...revealResults);
+    }
+    return results;
+  }
+
   flag(col: number, row: number): boolean {
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return false;
     const idx = col * ROWS + row;

@@ -155,7 +155,10 @@ function App() {
         const row = Math.floor(absY / CELL_SIZE)
         if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
           const key = cellKey(col, row)
-          if (!revealedCells.has(key) && !flaggedCells.has(key)) {
+          const revealed = revealedCells.get(key)
+          if (revealed && !revealed.isMine && revealed.number > 0) {
+            socketService.chord(col, row)
+          } else if (!revealedCells.has(key) && !flaggedCells.has(key)) {
             socketService.reveal(col, row)
           }
         }

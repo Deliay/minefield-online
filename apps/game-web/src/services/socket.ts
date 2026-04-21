@@ -151,6 +151,10 @@ class SocketService {
     this.socket?.emit('reveal', { col, row });
   }
 
+  chord(col: number, row: number) {
+    this.socket?.emit('chord', { col, row });
+  }
+
   flag(col: number, row: number) {
     this.socket?.emit('flag', { col, row });
   }

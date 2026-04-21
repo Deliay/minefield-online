@@ -66,7 +66,10 @@ const io = new Server(httpServer, {
         return;
       }
 
-      const isFlagging = minefield.isFlagged(col, row) === false;
+      if (minefield.isFlagged(col, row)) {
+        return;
+      }
+
       let scoreDelta = 0;
 
       if (cell.isMine) {

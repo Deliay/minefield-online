@@ -254,11 +254,11 @@ function App() {
 
   for (let i = 0; i <= COLS; i++) {
     const x = i * CELL_SIZE
-    gridLines.push(<Line key={`v-${i}`} points={[x, 0, x, gridHeight]} stroke="#333" strokeWidth={2} />)
+    gridLines.push(<Line key={`v-${i}`} points={[x, 0, x, gridHeight]} stroke="#333" strokeWidth={2} perfectDrawEnabled={false} />)
   }
   for (let i = 0; i <= ROWS; i++) {
     const y = i * CELL_SIZE
-    gridLines.push(<Line key={`h-${i}`} points={[0, y, gridWidth, y]} stroke="#333" strokeWidth={2} />)
+    gridLines.push(<Line key={`h-${i}`} points={[0, y, gridWidth, y]} stroke="#333" strokeWidth={2} perfectDrawEnabled={false} />)
   }
 
   const flaggedRects = Array.from(flaggedCells).map((key) => {

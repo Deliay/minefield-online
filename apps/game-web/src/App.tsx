@@ -15,11 +15,15 @@ function App() {
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight })
   const stageRef = useRef<Konva.Stage>(null)
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
+  const pointerPosRef = useRef(pointerPos)
+  pointerPosRef.current = pointerPos
   const [isDraggingEnabled] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
   const [flaggedCells, setFlaggedCells] = useState<Set<string>>(new Set())
   const [revealedCells, setRevealedCells] = useState<Map<string, { isMine: boolean; number: number }>>(new Map())
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
+  const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
+  const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
 
   const cellKey = (col: number, row: number) => `${col},${row}`
 
@@ -61,6 +65,35 @@ function App() {
         }
         return next;
       });
+    });
+
+    let prevScore = 0;
+    socketService.onScoreUpdate((data) => {
+      const delta = data.score - prevScore;
+      prevScore = data.score;
+      const pos = pointerPosRef.current;
+      if (delta !== 0 && pos) {
+        const id = Date.now();
+        setScorePopups((prev) => [...prev, { id, x: pos.x, y: pos.y, delta, opacity: 1 }]);
+        setTimeout(() => {
+          const node = popupRefs.current.get(id);
+          if (node) {
+            new Konva.Tween({
+              node,
+              duration: 0.5,
+              opacity: 0,
+              y: node.y() - 30,
+              easing: Konva.Easings.EaseOut,
+              onFinish: () => {
+                setScorePopups((prev) => prev.filter((p) => p.id !== id));
+                popupRefs.current.delete(id);
+              },
+            }).play();
+          } else {
+            setScorePopups((prev) => prev.filter((p) => p.id !== id));
+          }
+        }, 500);
+      }
     });
 
     return () => {
@@ -308,6 +341,21 @@ function App() {
               strokeWidth={2}
             />
           )}
+          {scorePopups.map((popup) => (
+            <Text
+              key={popup.id}
+              ref={(node) => {
+                if (node) popupRefs.current.set(popup.id, node);
+              }}
+              x={popup.x}
+              y={popup.y}
+              text={popup.delta > 0 ? `+${popup.delta}` : `${popup.delta}`}
+              fontSize={20}
+              fontStyle="bold"
+              fill={popup.delta > 0 ? '#4f4' : '#f44'}
+              opacity={popup.opacity}
+            />
+          ))}
         </Layer>
       </Stage>
       <button

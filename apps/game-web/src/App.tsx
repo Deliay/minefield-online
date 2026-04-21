@@ -1,4 +1,4 @@
-import { Stage, Layer, Text } from 'react-konva'
+import { Stage, FastLayer, Text } from 'react-konva'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Konva from 'konva'
 import { socketService } from './services/socket'
@@ -46,23 +46,30 @@ function App() {
     return lines
   })
 
-  const flaggedRects = useMemo(() =>
-    Array.from(flaggedCells).map((key) => {
-      const [col, row] = key.split(',').map(Number)
-      return <FlagCell key={key} col={col} row={row} cellSize={CELL_SIZE} />
-    }), [flaggedCells])
+  const cellRenders = useMemo(() => {
+    const flagged: React.ReactNode[] = []
+    const revealed: React.ReactNode[] = []
+    const numbers: React.ReactNode[] = []
 
-  const revealedRects = useMemo(() =>
-    Array.from(revealedCells.entries()).map(([key, cell]) => {
+    for (const key of flaggedCells) {
       const [col, row] = key.split(',').map(Number)
-      return <RevealedCell key={key} col={col} row={row} cellSize={CELL_SIZE} isMine={cell.isMine} />
-    }), [revealedCells])
+      flagged.push(<FlagCell key={key} col={col} row={row} cellSize={CELL_SIZE} />)
+    }
 
-  const revealedNumbers = useMemo(() =>
-    Array.from(revealedCells.entries()).map(([key, cell]) => {
+    for (const [key, cell] of revealedCells.entries()) {
       const [col, row] = key.split(',').map(Number)
-      return <NumberCell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} number={cell.number} />
-    }), [revealedCells])
+      revealed.push(<RevealedCell key={key} col={col} row={row} cellSize={CELL_SIZE} isMine={cell.isMine} />)
+      numbers.push(<NumberCell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} number={cell.number} />)
+    }
+
+    return { flagged, revealed, numbers }
+  }, [flaggedCells, revealedCells])
+
+  const cellKey = (col: number, row: number) => `${col},${row}`
+
+  const toggleFps = () => {
+    setShowFps((prev) => !prev);
+  };
 
   useEffect(() => {
     const anim = new Konva.Animation((frame) => {
@@ -79,8 +86,6 @@ function App() {
     return () => { anim.stop(); };
   }, [showFps]);
 
-  const cellKey = (col: number, row: number) => `${col},${row}`
-
   const handleNameSubmit = (name: string) => {
     socketService.setPlayerName(name);
     socketService.setName(name);
@@ -89,10 +94,6 @@ function App() {
 
   const handleEditName = () => {
     setShowNameModal(true);
-  };
-
-  const toggleFps = () => {
-    setShowFps((prev) => !prev);
   };
 
   useEffect(() => {
@@ -321,13 +322,13 @@ function App() {
         onContextMenu={handleContextMenu}
         onClick={handleClick}
       >
-        <Layer listening={false}>
+        <FastLayer listening={false}>
           {gridLines}
-          {flaggedRects}
-          {revealedRects}
-          {revealedNumbers}
-        </Layer>
-        <Layer listening={false}>
+          {cellRenders.flagged}
+          {cellRenders.revealed}
+          {cellRenders.numbers}
+        </FastLayer>
+        <FastLayer listening={false}>
           {pointerPos && (
             <PointerRect x={pointerPos.x} y={pointerPos.y} cellSize={CELL_SIZE} />
           )}
@@ -346,8 +347,8 @@ function App() {
               opacity={popup.opacity}
             />
           ))}
-        </Layer>
-        <Layer listening={false} >
+        </FastLayer>
+        <FastLayer listening={false}>
           {showFps && (
             <Text
               ref={fpsTextRef}
@@ -359,7 +360,7 @@ function App() {
               onClick={toggleFps}
             />
           )}
-        </Layer>
+        </FastLayer>
       </Stage>
       <button
         type="button"

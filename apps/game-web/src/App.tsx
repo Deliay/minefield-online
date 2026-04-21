@@ -16,6 +16,7 @@ function App() {
   const stageRef = useRef<Konva.Stage>(null)
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
   const [isDraggingEnabled] = useState(true)
+  const [isDragging, setIsDragging] = useState(false)
   const [flaggedCells, setFlaggedCells] = useState<Set<string>>(new Set())
   const [revealedCells, setRevealedCells] = useState<Map<string, { isMine: boolean; number: number }>>(new Map())
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
@@ -83,11 +84,15 @@ function App() {
   useEffect(() => {
     const stage = stageRef.current
     if (!stage) return
+    const handleDragStart = () => setIsDragging(true)
     const handleDragEnd = () => {
+      setIsDragging(false)
       setStagePos(stage.position())
     }
+    stage.on('dragstart', handleDragStart)
     stage.on('dragend', handleDragEnd)
     return () => {
+      stage.off('dragstart', handleDragStart)
       stage.off('dragend', handleDragEnd)
     }
   }, [])
@@ -279,7 +284,7 @@ function App() {
         width={dimensions.width}
         height={dimensions.height}
         draggable={isDraggingEnabled}
-        style={{ cursor: 'grab' }}
+        style={{ cursor: isDragging ? 'grab' : 'pointer' }}
         onMouseMove={handleMouseMove}
         onContextMenu={handleContextMenu}
         onClick={handleClick}

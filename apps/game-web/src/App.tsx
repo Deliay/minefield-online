@@ -4,7 +4,7 @@ import Konva from 'konva'
 import { socketService } from './services/socket'
 import { Leaderboard } from './components/Leaderboard'
 import { NameModal } from './components/NameModal'
-import { FlagCell, RevealedCell, NumberCell, GridLine, PointerRect } from './components/Cell'
+import { Cell, GridLine, PointerRect } from './components/Cell'
 
 const CELL_SIZE = 40
 const COLS = 1200
@@ -53,13 +53,13 @@ function App() {
 
     for (const key of flaggedCells) {
       const [col, row] = key.split(',').map(Number)
-      flagged.push(<FlagCell key={key} col={col} row={row} cellSize={CELL_SIZE} />)
+      flagged.push(<Cell key={key} col={col} row={row} cellSize={CELL_SIZE} type="flag" />)
     }
 
     for (const [key, cell] of revealedCells.entries()) {
       const [col, row] = key.split(',').map(Number)
-      revealed.push(<RevealedCell key={key} col={col} row={row} cellSize={CELL_SIZE} isMine={cell.isMine} />)
-      numbers.push(<NumberCell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} number={cell.number} />)
+      revealed.push(<Cell key={key} col={col} row={row} cellSize={CELL_SIZE} type="revealed" isMine={cell.isMine} />)
+      numbers.push(<Cell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} type="number" number={cell.number} />)
     }
 
     return { flagged, revealed, numbers }

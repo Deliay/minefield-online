@@ -1,71 +1,13 @@
-import { memo, useRef, useEffect } from 'react'
+import { memo } from 'react'
 import { Rect, Text, Line } from 'react-konva'
 
-interface FlagCellProps {
+interface CellProps {
   col: number
   row: number
   cellSize: number
-}
-
-export const FlagCell = memo(function FlagCell({ col, row, cellSize }: FlagCellProps) {
-  const ref = useRef<any>(null)
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.cache()
-    }
-  }, [])
-  return (
-    <Text
-      ref={ref}
-      id={`${col}-${row}`}
-      key={`${col}-${row}`}
-      x={col * cellSize}
-      y={row * cellSize}
-      width={cellSize}
-      height={cellSize}
-      text="🚩"
-      fontSize={24}
-      align="center"
-      verticalAlign="middle"
-      perfectDrawEnabled={false}
-    />
-  )
-})
-
-interface RevealedCellProps {
-  col: number
-  row: number
-  cellSize: number
-  isMine: boolean
-}
-
-export const RevealedCell = memo(function RevealedCell({ col, row, cellSize, isMine }: RevealedCellProps) {
-  const ref = useRef<any>(null)
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.cache()
-    }
-  }, [])
-  return (
-    <Rect
-      ref={ref}
-      id={`${col}-${row}`}
-      key={`${col}-${row}`}
-      x={col * cellSize}
-      y={row * cellSize}
-      width={cellSize}
-      height={cellSize}
-      fill={isMine ? '#ff0000' : '#ccc'}
-      perfectDrawEnabled={false}
-    />
-  )
-})
-
-interface NumberCellProps {
-  col: number
-  row: number
-  cellSize: number
-  number: number
+  type: 'flag' | 'revealed' | 'number'
+  isMine?: boolean
+  number?: number
 }
 
 const numberColors: Record<number, string> = {
@@ -79,32 +21,62 @@ const numberColors: Record<number, string> = {
   8: '#808080',
 }
 
-export const NumberCell = memo(function NumberCell({ col, row, cellSize, number }: NumberCellProps) {
-  const ref = useRef<any>(null)
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.cache()
-    }
-  }, [])
-  if (number === 0) return null
-  return (
-    <Text
-      ref={ref}
-      id={`${col}-${row}`}
-      key={`${col}-${row}`}
-      x={col * cellSize}
-      y={row * cellSize}
-      width={cellSize}
-      height={cellSize}
-      text={String(number)}
-      fontSize={20}
-      fontStyle="bold"
-      fill={numberColors[number] || '#000'}
-      align="center"
-      verticalAlign="middle"
-      perfectDrawEnabled={false}
-    />
-  )
+export const Cell = memo(function Cell({ col, row, cellSize, type, isMine, number }: CellProps) {
+  const x = col * cellSize
+  const y = row * cellSize
+  const id = `${col}-${row}`
+
+  if (type === 'flag') {
+    return (
+      <Text
+        id={id}
+        x={x}
+        y={y}
+        width={cellSize}
+        height={cellSize}
+        text="🚩"
+        fontSize={24}
+        align="center"
+        verticalAlign="middle"
+        perfectDrawEnabled={false}
+      />
+    )
+  }
+
+  if (type === 'revealed') {
+    return (
+      <Rect
+        id={id}
+        x={x}
+        y={y}
+        width={cellSize}
+        height={cellSize}
+        fill={isMine ? '#ff0000' : '#ccc'}
+        perfectDrawEnabled={false}
+      />
+    )
+  }
+
+  if (type === 'number' && number !== undefined && number > 0) {
+    return (
+      <Text
+        id={id}
+        x={x}
+        y={y}
+        width={cellSize}
+        height={cellSize}
+        text={String(number)}
+        fontSize={20}
+        fontStyle="bold"
+        fill={numberColors[number] || '#000'}
+        align="center"
+        verticalAlign="middle"
+        perfectDrawEnabled={false}
+      />
+    )
+  }
+
+  return null
 })
 
 interface GridLineProps {
@@ -127,7 +99,6 @@ interface PointerRectProps {
 export const PointerRect = memo(function PointerRect({ x, y, cellSize }: PointerRectProps) {
   return (
     <Rect
-      key={"pointer"}
       x={x}
       y={y}
       width={cellSize}

@@ -12,14 +12,14 @@ export function Leaderboard() {
       const sortedRankings = [...data.rankings].sort((a, b) => b.score - a.score);
       setRankings(sortedRankings);
 
-      const currentPlayer = data.rankings.find((r) => r.sessionId === currentSessionId);
+      const currentPlayer = data.rankings.find((r) => r.sessionId === currentSessionId?.slice(0, 6));
       if (currentPlayer) {
         setCurrentPlayerScore(currentPlayer.score);
       }
     });
   }, [currentSessionId]);
 
-  const displayRankings = rankings.filter((r) => !r.isCurrentPlayer);
+  const displayRankings = rankings.filter((r) => r.sessionId !== currentSessionId?.slice(0, 6));
 
   return (
     <div

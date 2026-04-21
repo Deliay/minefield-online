@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import minefield from './minefield.js';
+import { createSession, deleteSession, updateScore, getLeaderboard } from './session.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -12,10 +13,15 @@ const io = new Server(httpServer, {
 io.on('connection', (socket) => {
   console.log('player connected:', socket.id);
 
+  const session = createSession(socket.id);
+
   socket.emit('init', {
+    sessionId: session.sessionId,
     revealed: minefield.getAllRevealed(),
     flagged: minefield.getAllFlagged(),
   });
+
+  socket.emit('leaderboard', { rankings: getLeaderboard(socket.id) });
 
   socket.on('reveal', (data: { col: number; row: number }) => {
     const { col, row } = data;
@@ -25,12 +31,24 @@ io.on('connection', (socket) => {
     }
     const results = minefield.reveal(col, row);
     io.emit('cellRevealed', { col, row, cells: results });
+
+    const updated = updateScore(socket.id, -100);
+    if (updated) {
+      io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
+      io.emit('leaderboard', { rankings: getLeaderboard(socket.id) });
+    }
   });
 
   socket.on('flag', (data: { col: number; row: number }) => {
     const { col, row } = data;
     const isFlagged = minefield.flag(col, row);
     io.emit('cellFlagged', { col, row, isFlagged });
+
+    const updated = updateScore(socket.id, 10);
+    if (updated) {
+      io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
+      io.emit('leaderboard', { rankings: getLeaderboard(socket.id) });
+    }
   });
 
   socket.on('reset', () => {
@@ -38,7 +56,10 @@ io.on('connection', (socket) => {
     io.emit('reset');
   });
 
-  socket.on('disconnect', () => console.log('player disconnected:', socket.id));
+  socket.on('disconnect', () => {
+    console.log('player disconnected:', socket.id);
+    deleteSession(socket.id);
+  });
 });
 
 const PORT = process.env.PORT || 3001;

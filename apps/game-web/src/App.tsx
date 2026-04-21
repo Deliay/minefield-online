@@ -2,6 +2,7 @@ import { Stage, Layer, Rect, Line, Text } from 'react-konva'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Konva from 'konva'
 import { socketService } from './services/socket'
+import { Leaderboard } from './components/Leaderboard'
 
 const CELL_SIZE = 40
 const COLS = 1200
@@ -289,6 +290,7 @@ function App() {
 
   return (
     <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'black' }}>
+      <Leaderboard />
       <Stage
         ref={stageRef}
         width={dimensions.width}

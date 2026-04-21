@@ -35,6 +35,7 @@ export interface ScoreUpdateEvent {
 
 export interface Ranking {
   sessionId: string;
+  name: string;
   score: number;
   isCurrentPlayer: boolean;
 }
@@ -59,9 +60,12 @@ function deleteCookie(name: string): void {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
 }
 
+const PLAYER_NAME_KEY = 'minefield_player_name';
+
 class SocketService {
   private socket: Socket | null = null;
   private sessionId: string | null = null;
+  private playerName: string = '';
   private listeners: {
     onInit?: (data: InitEvent) => void;
     onCellRevealed?: (data: CellRevealedEvent) => void;
@@ -70,8 +74,25 @@ class SocketService {
     onLeaderboard?: (data: LeaderboardEvent) => void;
   } = {};
 
+  constructor() {
+    this.playerName = localStorage.getItem(PLAYER_NAME_KEY) || '';
+  }
+
   getSessionId(): string | null {
     return this.sessionId;
+  }
+
+  getPlayerName(): string {
+    return this.playerName;
+  }
+
+  setPlayerName(name: string): void {
+    this.playerName = name;
+    localStorage.setItem(PLAYER_NAME_KEY, name);
+  }
+
+  hasPlayerName(): boolean {
+    return this.playerName.length > 0;
   }
 
   connect() {
@@ -145,6 +166,10 @@ class SocketService {
 
   onLeaderboard(callback: (data: LeaderboardEvent) => void) {
     this.listeners.onLeaderboard = callback;
+  }
+
+  setName(name: string) {
+    this.socket?.emit('setName', { name });
   }
 
   reveal(col: number, row: number) {

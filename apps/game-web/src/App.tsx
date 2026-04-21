@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Konva from 'konva'
 import { socketService } from './services/socket'
 import { Leaderboard } from './components/Leaderboard'
+import { NameModal } from './components/NameModal'
 
 const CELL_SIZE = 40
 const COLS = 1200
@@ -24,8 +25,19 @@ function App() {
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
   const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
+  const [showNameModal, setShowNameModal] = useState(false)
 
   const cellKey = (col: number, row: number) => `${col},${row}`
+
+  const handleNameSubmit = (name: string) => {
+    socketService.setPlayerName(name);
+    socketService.setName(name);
+    setShowNameModal(false);
+  };
+
+  const handleEditName = () => {
+    setShowNameModal(true);
+  };
 
   useEffect(() => {
     socketService.connect();
@@ -42,6 +54,10 @@ function App() {
         newFlagged.add(cellKey(col, row));
       }
       setFlaggedCells(newFlagged);
+
+      if (!socketService.hasPlayerName()) {
+        setShowNameModal(true);
+      }
     });
 
     socketService.onCellRevealed((data) => {
@@ -314,7 +330,12 @@ function App() {
 
   return (
     <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'black' }}>
-      <Leaderboard />
+      <Leaderboard onEditName={handleEditName} />
+      <NameModal
+        isOpen={showNameModal}
+        onSubmit={handleNameSubmit}
+        initialName={socketService.getPlayerName()}
+      />
       <Stage
         ref={stageRef}
         width={dimensions.width}

@@ -2,7 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import minefield from './minefield.js';
-import { createSession, deleteSession, updateScore, getLeaderboard, getSessionBySessionId, sessions } from './session.js';
+import { createSession, deleteSession, updateScore, updateName, getLeaderboard, getSessionBySessionId, sessions } from './session.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -31,6 +31,13 @@ const io = new Server(httpServer, {
     });
 
     io.emit('leaderboard', { rankings: getLeaderboard() });
+
+    socket.on('setName', (data: { name: string }) => {
+      const updated = updateName(session.sessionId, data.name);
+      if (updated) {
+        io.emit('leaderboard', { rankings: getLeaderboard() });
+      }
+    });
 
     socket.on('reveal', (data: { col: number; row: number }) => {
       const { col, row } = data;

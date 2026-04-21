@@ -13,6 +13,7 @@
 |-------|---------|-------------|
 | `reveal` | `{ col: number, row: number }` | Reveal cell at position (score: -100 if mine) |
 | `flag` | `{ col: number, row: number }` | Flag cell as suspected mine (score: +10 if correct mine, -20 if actually not a mine) |
+| `setName` | `{ name: string }` | Set player's display name (max 20 chars) |
 | `reset` | - | Reset game state for all clients |
 
 ### Server → Client
@@ -49,6 +50,7 @@ interface ScoreUpdateEvent {
 
 interface Ranking {
   sessionId: string;
+  name: string;
   score: number;
   isCurrentPlayer: boolean;
 }
@@ -95,11 +97,11 @@ const CHUNK_MINES = 99;
 ## Session Management
 
 - Session is created automatically on WebSocket connection
-- Session contains: `sessionId`, `socketId`, `score` (initial: 0), `createdAt`
+- Session contains: `sessionId`, `socketId`, `score` (initial: 0), `name` (initial: empty string), `createdAt`
 - Session persists across page refreshes (stored in cookie)
 - Session is NOT destroyed on disconnect (preserves score for returning users)
 - Sessions are only cleared when server restarts
-- Only first 6 characters of `sessionId` are displayed publicly
+- Display name defaults to first 6 characters of `sessionId` if no name set
 
 ## Leaderboard Rules
 

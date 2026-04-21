@@ -2,11 +2,13 @@ export interface Session {
   sessionId: string;
   socketId: string;
   score: number;
+  name: string;
   createdAt: number;
 }
 
 export interface Ranking {
   sessionId: string;
+  name: string;
   score: number;
   isCurrentPlayer: boolean;
 }
@@ -20,6 +22,7 @@ export function createSession(socketId: string, existingSessionId?: string): Ses
     sessionId,
     socketId,
     score: existing?.score ?? 0,
+    name: existing?.name ?? '',
     createdAt: existing?.createdAt ?? Date.now(),
   };
   sessions.set(sessionId, session);
@@ -45,6 +48,13 @@ export function updateScore(sessionId: string, delta: number): Session | undefin
   return session;
 }
 
+export function updateName(sessionId: string, name: string): Session | undefined {
+  const session = sessions.get(sessionId);
+  if (!session) return undefined;
+  session.name = name;
+  return session;
+}
+
 export function getLeaderboard(currentSessionId?: string): Ranking[] {
   const allSessions = Array.from(sessions.values());
   const sorted = allSessions.sort((a, b) => {
@@ -53,6 +63,7 @@ export function getLeaderboard(currentSessionId?: string): Ranking[] {
   });
   return sorted.map(s => ({
     sessionId: s.sessionId.slice(0, 6),
+    name: s.name || s.sessionId.slice(0, 6),
     score: s.score,
     isCurrentPlayer: s.sessionId === currentSessionId,
   }));

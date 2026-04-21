@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useRef, useEffect } from 'react'
 import { Rect, Text } from 'react-konva'
 
 interface FlagCellProps {
@@ -8,8 +8,15 @@ interface FlagCellProps {
 }
 
 export const FlagCell = memo(function FlagCell({ col, row, cellSize }: FlagCellProps) {
+  const ref = useRef<any>(null)
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.cache()
+    }
+  }, [])
   return (
     <Text
+      ref={ref}
       id={`${col}-${row}`}
       x={col * cellSize}
       y={row * cellSize}
@@ -32,8 +39,15 @@ interface RevealedCellProps {
 }
 
 export const RevealedCell = memo(function RevealedCell({ col, row, cellSize, isMine }: RevealedCellProps) {
+  const ref = useRef<any>(null)
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.cache()
+    }
+  }, [])
   return (
     <Rect
+      ref={ref}
       id={`${col}-${row}`}
       x={col * cellSize}
       y={row * cellSize}
@@ -64,9 +78,16 @@ const numberColors: Record<number, string> = {
 }
 
 export const NumberCell = memo(function NumberCell({ col, row, cellSize, number }: NumberCellProps) {
+  const ref = useRef<any>(null)
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.cache()
+    }
+  }, [])
   if (number === 0) return null
   return (
     <Text
+      ref={ref}
       id={`${col}-${row}`}
       x={col * cellSize}
       y={row * cellSize}

@@ -32,10 +32,13 @@ io.on('connection', (socket) => {
     const results = minefield.reveal(col, row);
     io.emit('cellRevealed', { col, row, cells: results });
 
-    const updated = updateScore(socket.id, -100);
-    if (updated) {
-      io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
-      io.emit('leaderboard', { rankings: getLeaderboard(socket.id) });
+    const hitMine = results.some(cell => cell.isMine);
+    if (hitMine) {
+      const updated = updateScore(socket.id, -100);
+      if (updated) {
+        io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
+        io.emit('leaderboard', { rankings: getLeaderboard(socket.id) });
+      }
     }
   });
 

@@ -324,6 +324,7 @@ describe('game-api WebSocket API', () => {
       const sessionId = initData.sessionId;
 
       socket.emit('reset');
+      await waitForEvent<any>(socket, 'reset');
 
       socket.emit('flag', { col: 200, row: 200 });
       await waitForEvent<any>(socket, 'cellFlagged');

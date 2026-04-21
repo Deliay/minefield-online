@@ -298,21 +298,21 @@ function App() {
       />
       <Stage
         ref={stageRef}
-        width={dimensions.width}
-        height={dimensions.height}
+        width={window.innerWidth}
+        height={window.innerHeight}
         draggable={isDraggingEnabled}
         style={{ cursor: isDragging ? 'grab' : 'pointer' }}
         onMouseMove={handleMouseMove}
         onContextMenu={handleContextMenu}
         onClick={handleClick}
+        listening={false}
       >
-        <Layer listening={false}>{gridLines}</Layer>
-        <Layer>
+        <Layer listening={false}>
+          {gridLines}
           {flaggedRects}
           {revealedRects}
           {revealedNumbers}
-        </Layer>
-        <Layer>
+          <Text ref={fpsTextRef} x={10} y={10} text="FPS: 0" fontSize={16} fill="#fff" />
           {pointerPos && (
             <PointerRect x={pointerPos.x} y={pointerPos.y} cellSize={CELL_SIZE} />
           )}
@@ -331,7 +331,6 @@ function App() {
               opacity={popup.opacity}
             />
           ))}
-          <Text ref={fpsTextRef} x={10} y={10} text="FPS: 0" fontSize={16} fill="#fff" />
         </Layer>
       </Stage>
       <button

@@ -1,14 +1,78 @@
-import { Rect } from 'react-konva'
+import { memo } from 'react'
+import { Rect, Text } from 'react-konva'
 
-interface CellProps {
-  x: number
-  y: number
-  width?: number
-  height?: number
+interface FlagCellProps {
+  col: number
+  row: number
+  cellSize: number
 }
 
-function Cell({ x, y, width = 40, height = 40 }: CellProps) {
-  return <Rect x={x} y={y} width={width} height={height} fill="gray" />
+export const FlagCell = memo(function FlagCell({ col, row, cellSize }: FlagCellProps) {
+  return (
+    <Text
+      x={col * cellSize}
+      y={row * cellSize}
+      width={cellSize}
+      height={cellSize}
+      text="🚩"
+      fontSize={24}
+      align="center"
+      verticalAlign="middle"
+    />
+  )
+})
+
+interface RevealedCellProps {
+  col: number
+  row: number
+  cellSize: number
+  isMine: boolean
 }
 
-export default Cell
+export const RevealedCell = memo(function RevealedCell({ col, row, cellSize, isMine }: RevealedCellProps) {
+  return (
+    <Rect
+      x={col * cellSize}
+      y={row * cellSize}
+      width={cellSize}
+      height={cellSize}
+      fill={isMine ? '#ff0000' : '#ccc'}
+    />
+  )
+})
+
+interface NumberCellProps {
+  col: number
+  row: number
+  cellSize: number
+  number: number
+}
+
+const numberColors: Record<number, string> = {
+  1: '#0000FF',
+  2: '#008000',
+  3: '#FF0000',
+  4: '#000080',
+  5: '#800000',
+  6: '#008080',
+  7: '#000000',
+  8: '#808080',
+}
+
+export const NumberCell = memo(function NumberCell({ col, row, cellSize, number }: NumberCellProps) {
+  if (number === 0) return null
+  return (
+    <Text
+      x={col * cellSize}
+      y={row * cellSize}
+      width={cellSize}
+      height={cellSize}
+      text={String(number)}
+      fontSize={20}
+      fontStyle="bold"
+      fill={numberColors[number] || '#000'}
+      align="center"
+      verticalAlign="middle"
+    />
+  )
+})

@@ -4,6 +4,7 @@ import Konva from 'konva'
 import { socketService } from './services/socket'
 import { Leaderboard } from './components/Leaderboard'
 import { NameModal } from './components/NameModal'
+import { FlagCell, RevealedCell, NumberCell } from './components/Cell'
 
 const CELL_SIZE = 40
 const COLS = 1200
@@ -260,73 +261,20 @@ function App() {
     gridLines.push(<Line key={`h-${i}`} points={[0, y, gridWidth, y]} stroke="#333" strokeWidth={2} />)
   }
 
-  const flaggedRects = useMemo(() => {
-    return Array.from(flaggedCells).map((key) => {
-      const [col, row] = key.split(',').map(Number)
-      return (
-        <Text
-          key={key}
-          x={col * CELL_SIZE}
-          y={row * CELL_SIZE}
-          width={CELL_SIZE}
-          height={CELL_SIZE}
-          text="🚩"
-          fontSize={24}
-          align="center"
-          verticalAlign="middle"
-        />
-      )
-    })
-  }, [flaggedCells])
+  const flaggedRects = Array.from(flaggedCells).map((key) => {
+    const [col, row] = key.split(',').map(Number)
+    return <FlagCell key={key} col={col} row={row} cellSize={CELL_SIZE} />
+  })
 
-  const revealedRects = useMemo(() => {
-    return Array.from(revealedCells.entries()).map(([key, cell]) => {
-      const [col, row] = key.split(',').map(Number)
-      return (
-        <Rect
-          key={key}
-          x={col * CELL_SIZE}
-          y={row * CELL_SIZE}
-          width={CELL_SIZE}
-          height={CELL_SIZE}
-          fill={cell.isMine ? '#ff0000' : '#ccc'}
-        />
-      )
-    })
-  }, [revealedCells])
+  const revealedRects = Array.from(revealedCells.entries()).map(([key, cell]) => {
+    const [col, row] = key.split(',').map(Number)
+    return <RevealedCell key={key} col={col} row={row} cellSize={CELL_SIZE} isMine={cell.isMine} />
+  })
 
-  const numberColors: Record<number, string> = {
-    1: '#0000FF',
-    2: '#008000',
-    3: '#FF0000',
-    4: '#000080',
-    5: '#800000',
-    6: '#008080',
-    7: '#000000',
-    8: '#808080',
-  }
-
-  const revealedNumbers = useMemo(() => {
-    return Array.from(revealedCells.entries()).map(([key, cell]) => {
-      const [col, row] = key.split(',').map(Number)
-      if (cell.isMine || cell.number === 0) return null
-      return (
-        <Text
-          key={`num-${key}`}
-          x={col * CELL_SIZE}
-          y={row * CELL_SIZE}
-          width={CELL_SIZE}
-          height={CELL_SIZE}
-          text={String(cell.number)}
-          fontSize={20}
-          fontStyle="bold"
-          fill={numberColors[cell.number] || '#000'}
-          align="center"
-          verticalAlign="middle"
-        />
-      )
-    })
-  }, [revealedCells])
+  const revealedNumbers = Array.from(revealedCells.entries()).map(([key, cell]) => {
+    const [col, row] = key.split(',').map(Number)
+    return <NumberCell key={`num-${key}`} col={col} row={row} cellSize={CELL_SIZE} number={cell.number} />
+  })
 
   return (
     <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'black' }}>

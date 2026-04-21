@@ -72,7 +72,9 @@ const io = new Server(httpServer, {
       if (cell.isMine) {
         const isFlagged = minefield.flag(col, row);
         io.emit('cellFlagged', { col, row, isFlagged });
-        scoreDelta = 10;
+        if (isFlagged) {
+          scoreDelta = 10;
+        }
       } else {
         const results = minefield.reveal(col, row);
         io.emit('cellFlagged', { col, row, isFlagged: false });

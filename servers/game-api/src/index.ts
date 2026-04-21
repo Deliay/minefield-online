@@ -53,27 +53,31 @@ io.on('connection', (socket) => {
 
   socket.on('flag', (data: { col: number; row: number }) => {
     const { col, row } = data;
-    const isFlagged = minefield.flag(col, row);
-    io.emit('cellFlagged', { col, row, isFlagged });
-
-    const updated = updateScore(session.sessionId, 10);
-    if (updated) {
-      io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });
-      io.emit('leaderboard', { rankings: getLeaderboard(session.sessionId) });
-    }
-  });
-
-  socket.on('markAndReveal', (data: { col: number; row: number }) => {
-    const { col, row } = data;
     if (minefield.isRevealed(col, row)) {
-      io.emit('cellRevealed', { col, row, cells: [] });
+      io.emit('cellFlagged', { col, row, isFlagged: false });
       return;
     }
-    const results = minefield.reveal(col, row);
-    io.emit('cellRevealed', { col, row, cells: results });
 
-    const hitMine = results.some(cell => cell.isMine);
-    const scoreDelta = hitMine ? -120 : -20;
+    const cell = minefield.getCell(col, row);
+    if (!cell) {
+      io.emit('cellFlagged', { col, row, isFlagged: false });
+      return;
+    }
+
+    const isFlagging = minefield.isFlagged(col, row) === false;
+    let scoreDelta = 0;
+
+    if (cell.isMine) {
+      const isFlagged = minefield.flag(col, row);
+      io.emit('cellFlagged', { col, row, isFlagged });
+      scoreDelta = 10;
+    } else {
+      const results = minefield.reveal(col, row);
+      io.emit('cellFlagged', { col, row, isFlagged: false });
+      io.emit('cellRevealed', { col, row, cells: results });
+      scoreDelta = -20;
+    }
+
     const updated = updateScore(session.sessionId, scoreDelta);
     if (updated) {
       io.emit('scoreUpdate', { sessionId: updated.sessionId, score: updated.score });

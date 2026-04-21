@@ -12,8 +12,7 @@
 | Event | Payload | Description |
 |-------|---------|-------------|
 | `reveal` | `{ col: number, row: number }` | Reveal cell at position (score: -100 if mine) |
-| `flag` | `{ col: number, row: number }` | Toggle flag on cell (score: +10) |
-| `markAndReveal` | `{ col: number, row: number }` | Mark cell as suspected non-mine and reveal (score: -20 if safe, -120 if mine) |
+| `flag` | `{ col: number, row: number }` | Flag cell as suspected mine (score: +10 if correct mine, -20 if actually not a mine) |
 | `reset` | - | Reset game state for all clients |
 
 ### Server → Client
@@ -87,9 +86,8 @@ const CHUNK_MINES = 99;
 | Action | Score Change |
 |--------|--------------|
 | Left click (reveal mine) | -100 |
-| Right click (flag) | +10 |
-| Middle click (markAndReveal safe) | -20 |
-| Middle click (markAndReveal mine) | -120 |
+| Flag a mine (correct) | +10 |
+| Flag a non-mine (wrong) | -20 |
 
 - Score can be negative
 - Tie-breaker: earlier creation time ranks higher
@@ -116,9 +114,9 @@ const CHUNK_MINES = 99;
 - `reveal`: If cell is already revealed or flagged, returns empty `cells` array
 - `reveal`: On mine hit, only the mine cell is returned in `cells`
 - `reveal`: On safe cell, uses flood-fill to expand and returns all revealed cells
-- `flag`: Toggles flag state; returns `isFlagged: true` if now flagged, `false` if unflagged
+- `flag`: If cell is a mine, flags it and player earns +10 points
+- `flag`: If cell is NOT a mine, reveals it and player loses 20 points
 - `flag`: Cannot flag already revealed cells
-- `markAndReveal`: Costs 20 points to reveal a cell; if cell is mine, additional -100 penalty applies (total -120)
 - All events are broadcast to all connected clients (global state)
 - New clients receive full `init` state including all previously revealed/flagged cells
 - After `init`, client receives `leaderboard` event with current rankings

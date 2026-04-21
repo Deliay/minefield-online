@@ -154,10 +154,6 @@ class SocketService {
   flag(col: number, row: number) {
     this.socket?.emit('flag', { col, row });
   }
-
-  markAndReveal(col: number, row: number) {
-    this.socket?.emit('markAndReveal', { col, row });
-  }
 }
 
 export const socketService = new SocketService();

@@ -300,12 +300,22 @@ describe('game-api WebSocket API', () => {
       socket.emit('reset');
 
       const startScore = 0;
-      socket.emit('reveal', { col: 100, row: 100 });
-      await waitForEvent<any>(socket, 'cellRevealed');
+      let hitMine = false;
 
-      const scoreUpdate = await waitForEvent<ScoreUpdateEvent>(socket, 'scoreUpdate');
-      expect(scoreUpdate.sessionId).toBe(sessionId);
-      expect(scoreUpdate.score).toBe(startScore - 100);
+      for (let attempt = 0; attempt < 20 && !hitMine; attempt++) {
+        const col = 100 + attempt;
+        const row = 100 + attempt;
+        socket.emit('reveal', { col, row });
+        const result = await waitForEvent<any>(socket, 'cellRevealed');
+        if (result.cells.some((c: any) => c.isMine)) {
+          hitMine = true;
+          const scoreUpdate = await waitForEvent<ScoreUpdateEvent>(socket, 'scoreUpdate');
+          expect(scoreUpdate.sessionId).toBe(sessionId);
+          expect(scoreUpdate.score).toBe(startScore - 100);
+        }
+      }
+
+      expect(hitMine).toBe(true);
     });
 
     it('should increase score by 10 on flag', async () => {
@@ -331,11 +341,15 @@ describe('game-api WebSocket API', () => {
       socket.emit('reset');
       await waitForEvent<any>(socket, 'reset');
 
-      for (let i = 0; i < 5; i++) {
+      let minesHit = 0;
+      for (let i = 0; i < 20 && minesHit < 3; i++) {
         const col = 300 + i;
         socket.emit('reveal', { col, row: 300 });
         try {
-          await waitForEvent<any>(socket, 'cellRevealed');
+          const result = await waitForEvent<any>(socket, 'cellRevealed');
+          if (result.cells.some((c: any) => c.isMine)) {
+            minesHit++;
+          }
         } catch {}
       }
 

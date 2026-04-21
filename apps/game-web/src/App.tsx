@@ -331,7 +331,7 @@ function App() {
               opacity={popup.opacity}
             />
           ))}
-          <Text ref={fpsTextRef} x={dimensions.width - 80} y={10} text="FPS: 0" fontSize={16} fill="#fff" />
+          <Text ref={fpsTextRef} x={10} y={10} text="FPS: 0" fontSize={16} fill="#fff" />
         </Layer>
       </Stage>
       <button

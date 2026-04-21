@@ -308,6 +308,7 @@ function App() {
               fill="rgba(128, 128, 128, 0.5)"
               stroke="#fff"
               strokeWidth={2}
+              perfectDrawEnabled={false}
             />
           )}
           {scorePopups.map((popup) => (

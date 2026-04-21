@@ -28,20 +28,7 @@ function App() {
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
   const fpsTextRef = useRef<Konva.Text>(null)
   const [showNameModal, setShowNameModal] = useState(false)
-  const [gridLines, setGridLines] = useState<React.ReactNode[]>([])
-
-  useEffect(() => {
-    const anim = new Konva.Animation((frame) => {
-      if (fpsTextRef.current) {
-        fpsTextRef.current.text('FPS: ' + frame.frameRate.toFixed(1));
-      }
-    }, stageRef.current?.getLayers()[0]?.getLayer());
-
-    anim.start();
-    return () => { anim.stop(); };
-  }, []);
-
-  useEffect(() => {
+  const [gridLines] = useState<React.ReactNode[]>(() => {
     const lines: React.ReactNode[] = []
     const gridWidth = COLS * CELL_SIZE
     const gridHeight = ROWS * CELL_SIZE
@@ -54,7 +41,18 @@ function App() {
       const y = i * CELL_SIZE
       lines.push(<GridLine key={`h-${i}`} x1={0} y1={y} x2={gridWidth} y2={y} />)
     }
-    setGridLines(lines)
+    return lines
+  })
+
+  useEffect(() => {
+    const anim = new Konva.Animation((frame) => {
+      if (fpsTextRef.current) {
+        fpsTextRef.current.text('FPS: ' + frame.frameRate.toFixed(1));
+      }
+    }, stageRef.current?.getLayers()[0]?.getLayer());
+
+    anim.start();
+    return () => { anim.stop(); };
   }, []);
 
   const cellKey = (col: number, row: number) => `${col},${row}`

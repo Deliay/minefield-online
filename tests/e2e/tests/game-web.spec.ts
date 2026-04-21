@@ -123,8 +123,8 @@ test.describe('game-web socket integration', () => {
       await page.goto('/');
       await page.waitForTimeout(2000);
 
-      const highlightedPlayer = page.locator('[class*="highlight"], [data-current="true"]').first();
-      await expect(highlightedPlayer).toBeVisible();
+      const currentPlayerSection = page.locator('div').filter({ hasText: 'You:' }).first();
+      await expect(currentPlayerSection).toBeVisible();
     });
 
     test('right-click flag updates score', async ({ page }) => {

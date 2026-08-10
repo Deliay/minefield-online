@@ -22,13 +22,13 @@ userSchema.index({ username: 1 }, { unique: true, collation: { locale: 'en', str
 
 export const User = mongoose.model<IUser>('User', userSchema);
 
-const MONGO_URI = process.env.ConnectionStrings__mongo || process.env.MONGODB_URI;
+const MONGO_URI = process.env.MINEFIELD_URI || process.env.MONGODB_URI;
 const DB_NAME = process.env.MONGODB_DATABASE || 'minefield';
 
 export async function connectDB(): Promise<void> {
   if (!MONGO_URI) {
     throw new Error(
-      'MongoDB 连接串缺失：请通过 Aspire AppHost 编排 MongoDB 并用 withReference(mongoDb) 自动注入 ConnectionStrings__mongo（禁止 docker 直接编排）。'
+      'MongoDB 连接串缺失：请通过 Aspire AppHost 编排 MongoDB 并用 withReference(mongoDb) 自动注入 MINEFIELD_URI（禁止 docker 直接编排）。'
     );
   }
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });

@@ -37,6 +37,9 @@ graph TD
     B --> D[Session Manager<br/>在线玩家会话]
     C --> E[(MongoDB<br/>users)]
     D --> E
+    H[Aspire AppHost<br/>infra/local-dev] -.编排.-> B
+    H -.编排.-> A
+    H -.addMongoDB.-> E
 ```
 
 ### 2.2 技术栈
@@ -46,6 +49,7 @@ graph TD
 | 前端 | React 18 + Vite + TypeScript | 现有技术栈 |
 | 后端 | Node.js + Express 5 + Socket.IO 4 | 现有技术栈 |
 | 持久化 | MongoDB + Mongoose | 新增 |
+| 本地编排 | Aspire AppHost (TypeScript, SDK 13.2.2) | 现有 infra/local-dev，禁止 docker 直接编排 |
 | 密码哈希 | bcryptjs | 新增依赖 |
 | Token | crypto.randomUUID / randomBytes | Node 内置，无新依赖 |
 
@@ -203,6 +207,25 @@ sequenceDiagram
 - `setName` 校验登录态与长度（≤20），写库 `displayName` 后广播 `leaderboard`
 - 排行榜展示优先级：`displayName`（匿名兜底逻辑移除，本期强制登录）
 
+#### 实现点 5: Aspire 编排 MongoDB（本地开发）
+
+> 约束：本地禁止使用 docker 直接编排（不允许 docker-compose），所有本地服务一律由 Aspire AppHost 编排。
+
+- `infra/local-dev/aspire.config.json` 的 `packages` 增加 `Aspire.Hosting.MongoDB`（与现有 SDK 13.2.2 同版本）
+- `infra/local-dev/apphost.ts` 增加 MongoDB 资源，并将连接串注入 game-api：
+
+```typescript
+const mongo = await builder.addMongoDB('mongo');
+const mongoDb = await mongo.addDatabase('minefield');
+
+const backend = await builder.addJavaScriptApp('game-api', '../../servers/game-api', { runScriptName: 'dev' })
+  .withHttpEndpoint({ env: 'PORT', name: 'http' })
+  .withReference(mongoDb); // Aspire 自动注入连接串环境变量
+```
+
+- `withReference` 由 Aspire 将 MongoDB 连接串注入 game-api 进程环境；game-api 的 `db.ts` 从环境变量读取连接串建立 Mongoose 连接；本地缺少该环境变量时启动失败并给出明确报错（不静默降级）
+- 编排拓扑：Aspire AppHost 统一管理 `mongo`、`game-api`、`game-web` 三个资源，Dashboard 可观测各服务状态
+
 ## 6. 技术决策
 
 ### 6.1 决策列表
@@ -219,7 +242,7 @@ sequenceDiagram
 
 | 类型 | 内容 | 说明 |
 |------|------|------|
-| 依赖 | MongoDB 实例 | 本地开发用 docker（infra/local-dev 增加 mongo 服务） |
+| 依赖 | MongoDB 实例 | 由 Aspire AppHost 编排（infra/local-dev apphost.ts `addMongoDB`），本地禁止 docker 直接编排 |
 | 依赖 | mongoose、bcryptjs | game-api 新增依赖 |
 | 约束 | 密码不明文存储/传输 | bcrypt 哈希；传输层生产环境需 HTTPS（部署侧负责） |
 | 约束 | 服务器重启 token 全失效 | 可接受：分数已持久化，重新登录即可 |
@@ -245,7 +268,8 @@ apps/game-web/src/
 └── App.tsx               # 未登录跳转 Login；改名入口
 
 infra/local-dev/
-└── docker-compose.yml    # 新增 mongo 服务
+├── apphost.ts            # 新增 mongo 资源（addMongoDB），withReference 注入 game-api
+└── aspire.config.json    # packages 增加 Aspire.Hosting.MongoDB
 ```
 
 ## 8. 测试策略

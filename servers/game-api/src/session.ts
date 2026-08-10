@@ -1,70 +1,100 @@
+import { User } from './db.js';
+
 export interface Session {
-  sessionId: string;
+  username: string;
+  displayName: string;
   socketId: string;
   score: number;
-  name: string;
   createdAt: number;
 }
 
 export interface Ranking {
-  sessionId: string;
-  name: string;
+  username: string;
+  displayName: string;
   score: number;
   isCurrentPlayer: boolean;
 }
 
-export const sessions = new Map<string, Session>();
+const sessions = new Map<string, Session>();
 
-export function createSession(socketId: string, existingSessionId?: string): Session {
-  const sessionId = existingSessionId || crypto.randomUUID();
-  const existing = existingSessionId ? sessions.get(existingSessionId) : undefined;
+export function createSession(
+  username: string,
+  displayName: string,
+  socketId: string,
+  score: number
+): Session {
   const session: Session = {
-    sessionId,
+    username,
+    displayName,
     socketId,
-    score: existing?.score ?? 0,
-    name: existing?.name ?? '',
-    createdAt: existing?.createdAt ?? Date.now(),
+    score,
+    createdAt: Date.now(),
   };
-  sessions.set(sessionId, session);
+  sessions.set(socketId, session);
   return session;
 }
 
-export function getSession(sessionId: string): Session | undefined {
-  return sessions.get(sessionId);
+export function getSession(socketId: string): Session | undefined {
+  return sessions.get(socketId);
 }
 
-export function getSessionBySessionId(sessionId: string): Session | undefined {
-  return sessions.get(sessionId);
+export function deleteSession(socketId: string): void {
+  sessions.delete(socketId);
 }
 
-export function deleteSession(sessionId: string): void {
-  sessions.delete(sessionId);
-}
+export async function updateScore(
+  socketId: string,
+  delta: number
+): Promise<Session | null> {
+  const session = sessions.get(socketId);
+  if (!session) return null;
 
-export function updateScore(sessionId: string, delta: number): Session | undefined {
-  const session = sessions.get(sessionId);
-  if (!session) return undefined;
-  session.score += delta;
+  const updated = await User.findOneAndUpdate(
+    { username: session.username },
+    { $inc: { score: delta } },
+    { new: true }
+  ).collation({ locale: 'en', strength: 2 });
+
+  if (!updated) {
+    console.warn(`[score] 写库失败，跳过广播: username=${session.username}`);
+    return null;
+  }
+  session.score = updated.score;
+  session.displayName = updated.displayName;
   return session;
 }
 
-export function updateName(sessionId: string, name: string): Session | undefined {
-  const session = sessions.get(sessionId);
-  if (!session) return undefined;
-  session.name = name;
+export async function updateDisplayName(
+  socketId: string,
+  name: string
+): Promise<Session | null> {
+  const session = sessions.get(socketId);
+  if (!session) return null;
+
+  const updated = await User.findOneAndUpdate(
+    { username: session.username },
+    { $set: { displayName: name } },
+    { new: true }
+  ).collation({ locale: 'en', strength: 2 });
+
+  if (!updated) {
+    console.warn(`[setName] 写库失败: username=${session.username}`);
+    return null;
+  }
+  session.displayName = updated.displayName;
   return session;
 }
 
-export function getLeaderboard(currentSessionId?: string): Ranking[] {
+export function getLeaderboard(currentSocketId?: string): Ranking[] {
   const allSessions = Array.from(sessions.values());
   const sorted = allSessions.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     return a.createdAt - b.createdAt;
   });
-  return sorted.map(s => ({
-    sessionId: s.sessionId.slice(0, 6),
-    name: s.name || s.sessionId.slice(0, 6),
+  return sorted.map((s) => ({
+    username: s.username,
+    displayName: s.displayName,
     score: s.score,
-    isCurrentPlayer: s.sessionId === currentSessionId,
+    isCurrentPlayer: s.socketId === currentSocketId,
   }));
 }

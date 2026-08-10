@@ -2,8 +2,10 @@ import { Stage, Text, Layer } from 'react-konva'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Konva from 'konva'
 import { socketService } from './services/socket'
+import type { User } from './services/socket'
+import { getToken, clearToken } from './services/api'
 import { Leaderboard } from './components/Leaderboard'
-import { NameModal } from './components/NameModal'
+import { Login } from './pages/Login'
 import { Cell, GridLine, PointerRect } from './components/Cell'
 import { useImmer } from 'use-immer'
 
@@ -15,6 +17,10 @@ const MINIMAP_HEIGHT = Math.floor(ROWS * (MINIMAP_WIDTH / COLS))
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [isAuthed, setIsAuthed] = useState<boolean>(() => Boolean(getToken()))
+  const [kickNotice, setKickNotice] = useState<string | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight })
   const stageRef = useRef<Konva.Stage>(null)
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
@@ -25,7 +31,6 @@ function App() {
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
   const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
-  const [showNameModal, setShowNameModal] = useState(false)
   const [gridLines] = useState<React.ReactNode[]>(() => {
     const lines: React.ReactNode[] = []
     const gridWidth = COLS * CELL_SIZE
@@ -56,7 +61,6 @@ function App() {
   const revealedCellNodes = useMemo(() => {
     const revealed: React.ReactNode[] = []
 
-
     for (const key of Object.keys(revealedCells)) {
       const cell = revealedCells[key];
 
@@ -76,20 +80,13 @@ function App() {
   const cellKey = (col: number, row: number) => `${col},${row}`
   const cellKeyObj = ({ col, row }: { col: number, row: number }) => `${col},${row}`
 
-  const handleNameSubmit = (name: string) => {
-    socketService.setPlayerName(name);
-    socketService.setName(name);
-    setShowNameModal(false);
-  };
-
-  const handleEditName = () => {
-    setShowNameModal(true);
-  };
-
   useEffect(() => {
+    if (!isAuthed) return;
+
     socketService.connect();
 
     socketService.onInit((data) => {
+      setUser(data.user);
       updateRevealedCells((obj) => {
         for (const cell of data.revealed) {
           obj[cellKeyObj(cell)] = cell;
@@ -101,17 +98,11 @@ function App() {
           obj[cellKeyObj(flagData)] = flagData;
         }
       })
-
-      if (!socketService.hasPlayerName()) {
-        setShowNameModal(true);
-      }
     });
 
     socketService.onCellRevealed((data) => {
       updateRevealedCells((prev) => {
         const key = cellKeyObj(data);
-        console.log('reveal' + key);
-        
         if (Array.isArray(data.cells) && data.cells.length > 0) {
           for (const cell of data.cells) {
             const cellKey = cellKeyObj(cell);
@@ -158,10 +149,23 @@ function App() {
       }
     });
 
+    socketService.onForceLogout(() => {
+      clearToken();
+      setUser(null);
+      setIsAuthed(false);
+      setKickNotice('账号已在其他位置登录');
+    });
+
+    socketService.onLoginRequired(() => {
+      clearToken();
+      setUser(null);
+      setIsAuthed(false);
+    });
+
     return () => {
       socketService.disconnect();
     };
-  }, []);
+  }, [isAuthed]);
 
   useEffect(() => {
     const stage = stageRef.current
@@ -199,8 +203,6 @@ function App() {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-
-
 
   const handleMouseMove = useCallback(() => {
     const stage = stageRef.current
@@ -254,8 +256,6 @@ function App() {
           const hasRevealed = !!revealed;
           if (hasRevealed && !revealed.isMine && Number(revealed.number) > 0) {
             socketService.chord(col, row)
-            console.log('chord' + col + ',' + row);
-            
           } else if (!hasRevealed && !flaggedCells[key]) {
             socketService.reveal(col, row)
           }
@@ -296,14 +296,108 @@ function App() {
     [scaleX, scaleY, dimensions]
   )
 
+  const handleLogout = () => {
+    clearToken();
+    setUser(null);
+    setIsAuthed(false);
+  }
+
+  const handleSetName = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = nameDraft.trim();
+    if (!name || name.length > 20) return;
+    socketService.setName(name);
+    setNameDraft('');
+  }
+
+  if (!isAuthed) {
+    return (
+      <Login
+        onAuthed={(u) => {
+          setUser(u);
+          setIsAuthed(true);
+        }}
+      />
+    )
+  }
+
   return (
     <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'black' }}>
-      <Leaderboard onEditName={handleEditName} />
-      <NameModal
-        isOpen={showNameModal}
-        onSubmit={handleNameSubmit}
-        initialName={socketService.getPlayerName()}
-      />
+      <div
+        style={{
+          position: 'absolute',
+          top: 10,
+          left: 10,
+          zIndex: 10,
+          display: 'flex',
+          gap: 10,
+          alignItems: 'center',
+          background: 'rgba(0,0,0,0.8)',
+          color: '#fff',
+          padding: '8px 12px',
+          borderRadius: 8,
+          fontFamily: 'monospace',
+          fontSize: 14,
+        }}
+      >
+        <span>{user ? `${user.displayName || user.username}（${user.username}）` : '...'}</span>
+        <span style={{ color: '#4a4' }}>{user ? `Score: ${user.score}` : ''}</span>
+        <form onSubmit={handleSetName} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <label htmlFor="set-name" style={{ display: 'none' }}>
+            改名
+          </label>
+          <input
+            id="set-name"
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            placeholder="改名 (≤20)"
+            maxLength={20}
+            style={{
+              width: 120,
+              padding: 4,
+              borderRadius: 4,
+              border: '1px solid #555',
+              background: '#111',
+              color: '#fff',
+            }}
+          />
+          <button type="submit" style={{ padding: '4px 8px', cursor: 'pointer' }}>
+            改名
+          </button>
+        </form>
+        <button type="button" onClick={handleLogout} style={{ padding: '4px 8px', cursor: 'pointer' }}>
+          登出
+        </button>
+      </div>
+
+      {kickNotice && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.7)',
+            color: '#fff',
+            fontFamily: 'monospace',
+          }}
+        >
+          <div style={{ background: '#1a1a1a', padding: 24, borderRadius: 10, textAlign: 'center' }}>
+            <p>{kickNotice}</p>
+            <button
+              type="button"
+              onClick={() => setKickNotice(null)}
+              style={{ padding: '8px 16px', cursor: 'pointer' }}
+            >
+              返回登录
+            </button>
+          </div>
+        </div>
+      )}
+
+      <Leaderboard />
       <Stage
         ref={stageRef}
         width={dimensions.width}

@@ -4,6 +4,7 @@
 
 - Endpoint: `ws://localhost:3001`
 - Transport: WebSocket (Socket.IO with polling fallback)
+- Authentication: client MUST pass a valid token in the `auth` handshake field (`{ token: string }`). Missing or invalid token → connection is rejected (`disconnect`). **本期强制登录，无游客模式。**
 
 ## Events
 
@@ -13,7 +14,8 @@
 |-------|---------|-------------|
 | `reveal` | `{ col: number, row: number }` | Reveal cell at position (score: -100 if mine) |
 | `flag` | `{ col: number, row: number }` | Flag cell as suspected mine (score: +10 if correct mine, -20 if actually not a mine) |
-| `setName` | `{ name: string }` | Set player's display name (max 20 chars) |
+| `chord` | `{ col: number, row: number }` | Auto-reveal neighbors of a revealed number cell (score: -100 if mine hit) |
+| `setName` | `{ name: string }` | 持久化修改显示名称（max 20 字符），成功后广播 leaderboard |
 | `reset` | - | Reset game state for all clients |
 
 ### Server → Client
@@ -25,6 +27,9 @@
 | `leaderboard` | `LeaderboardEvent` | Leaderboard data (sent after every score change) |
 | `cellRevealed` | `CellRevealedEvent` | Cell reveal result |
 | `cellFlagged` | `CellFlaggedEvent` | Flag toggle result |
+| `setNameSuccess` | `{ displayName: string }` | Display name updated successfully |
+| `setNameError` | `{ error: string }` | Display name rejected |
+| `forceLogout` | `ForceLogoutEvent` | 账号在他处登录，本会话被踢出（客户端应清除 token 并返回登录界面） |
 | `reset` | - | Game has been reset |
 
 ## Data Types
@@ -39,6 +44,11 @@ interface RevealedCell {
 
 interface InitEvent {
   sessionId: string;
+  user: {
+    username: string;
+    displayName: string;
+    score: number;
+  };
   revealed: RevealedCell[];
   flagged: Array<{ col: number; row: number }>;
 }
@@ -48,9 +58,13 @@ interface ScoreUpdateEvent {
   score: number;
 }
 
+interface ForceLogoutEvent {
+  reason: 'kicked';
+}
+
 interface Ranking {
-  sessionId: string;
-  name: string;
+  username: string;
+  displayName: string;
   score: number;
   isCurrentPlayer: boolean;
 }
@@ -89,19 +103,19 @@ const CHUNK_MINES = 99;
 |--------|--------------|
 | Left click (reveal mine) | -100 |
 | Flag a mine (correct) | +10 |
-| Flag a non-mine (wrong) | -20 |
+| Flag a non-mine (wrong) | -20 (cell is revealed) |
+| Chord that reveals a mine | -100 |
 
 - Score can be negative
 - Tie-breaker: earlier creation time ranks higher
 
 ## Session Management
 
-- Session is created automatically on WebSocket connection
-- Session contains: `sessionId`, `socketId`, `score` (initial: 0), `name` (initial: empty string), `createdAt`
-- Session persists across page refreshes (stored in cookie)
-- Session is NOT destroyed on disconnect (preserves score for returning users)
-- Sessions are only cleared when server restarts
-- Display name defaults to first 6 characters of `sessionId` if no name set
+- Session is created automatically on authenticated WebSocket connection (token → user)
+- Session binds to a user account (`username`/`displayName`), score is persisted to MongoDB
+- Session contains: `username`, `displayName`, `socketId`, `score`, `createdAt`
+- Session is destroyed on disconnect
+- 同一账号同一时间仅允许一个活跃会话：新会话登录后旧会话收到 `forceLogout` 并被断开
 
 ## Leaderboard Rules
 
@@ -110,6 +124,7 @@ const CHUNK_MINES = 99;
 - Full leaderboard sent to all clients on every score change
 - Current player entry is highlighted via `isCurrentPlayer: true`
 - Displayed in top-right corner of game UI
+- Ranking identity uses `displayName`（持久化，默认 = username）；用户名大小写不敏感唯一
 
 ## Behavior Notes
 
@@ -119,6 +134,7 @@ const CHUNK_MINES = 99;
 - `flag`: If cell is a mine, flags it and player earns +10 points
 - `flag`: If cell is NOT a mine, reveals it and player loses 20 points
 - `flag`: Cannot flag already revealed cells
+- `chord`: Only valid on a revealed number cell; reveals un-revealed neighbors when the flagged count matches the number
 - All events are broadcast to all connected clients (global state)
 - New clients receive full `init` state including all previously revealed/flagged cells
 - After `init`, client receives `leaderboard` event with current rankings

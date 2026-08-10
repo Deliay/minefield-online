@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
+import { getToken } from './api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const SESSION_ID_COOKIE = 'minefield_session_id';
 
 export interface RevealedCell {
   col: number;
@@ -22,8 +22,15 @@ export interface CellFlaggedEvent {
   isFlagged: boolean;
 }
 
+export interface User {
+  username: string;
+  displayName: string;
+  score: number;
+}
+
 export interface InitEvent {
   sessionId: string;
+  user: User;
   revealed: RevealedCell[];
   flagged: Array<{ col: number; row: number }>;
 }
@@ -33,9 +40,13 @@ export interface ScoreUpdateEvent {
   score: number;
 }
 
+export interface ForceLogoutEvent {
+  reason: 'kicked';
+}
+
 export interface Ranking {
-  sessionId: string;
-  name: string;
+  username: string;
+  displayName: string;
   score: number;
   isCurrentPlayer: boolean;
 }
@@ -44,65 +55,38 @@ export interface LeaderboardEvent {
   rankings: Ranking[];
 }
 
-function getCookie(name: string): string | null {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-  return null;
+interface Listeners {
+  onInit?: (data: InitEvent) => void;
+  onCellRevealed?: (data: CellRevealedEvent) => void;
+  onCellFlagged?: (data: CellFlaggedEvent) => void;
+  onScoreUpdate?: (data: ScoreUpdateEvent) => void;
+  onLeaderboard?: (data: LeaderboardEvent) => void;
+  onForceLogout?: (data: ForceLogoutEvent) => void;
+  onDisconnect?: () => void;
+  onLoginRequired?: () => void;
 }
-
-function setCookie(name: string, value: string, days: number = 365): void {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${value}; expires=${expires}; path=/`;
-}
-
-function deleteCookie(name: string): void {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
-}
-
-const PLAYER_NAME_KEY = 'minefield_player_name';
 
 class SocketService {
   private socket: Socket | null = null;
-  private sessionId: string | null = null;
-  private playerName: string = '';
-  private listeners: {
-    onInit?: (data: InitEvent) => void;
-    onCellRevealed?: (data: CellRevealedEvent) => void;
-    onCellFlagged?: (data: CellFlaggedEvent) => void;
-    onScoreUpdate?: (data: ScoreUpdateEvent) => void;
-    onLeaderboard?: (data: LeaderboardEvent) => void;
-  } = {};
+  private user: User | null = null;
+  private listeners: Listeners = {};
 
-  constructor() {
-    this.playerName = localStorage.getItem(PLAYER_NAME_KEY) || '';
-  }
-
-  getSessionId(): string | null {
-    return this.sessionId;
-  }
-
-  getPlayerName(): string {
-    return this.playerName;
-  }
-
-  setPlayerName(name: string): void {
-    this.playerName = name;
-    localStorage.setItem(PLAYER_NAME_KEY, name);
-  }
-
-  hasPlayerName(): boolean {
-    return this.playerName.length > 0;
+  getUser(): User | null {
+    return this.user;
   }
 
   connect() {
     if (this.socket?.connected) return;
 
-    const storedSessionId = getCookie(SESSION_ID_COOKIE);
+    const token = getToken();
+    if (!token) {
+      this.listeners.onDisconnect?.();
+      return;
+    }
 
     this.socket = io(API_URL, {
       transports: ['websocket', 'polling'],
-      auth: { sessionId: storedSessionId || undefined },
+      auth: { token },
     });
 
     this.socket.on('connect', () => {
@@ -111,13 +95,18 @@ class SocketService {
 
     this.socket.on('disconnect', () => {
       console.log('Disconnected from server');
+      this.listeners.onDisconnect?.();
+    });
+
+    this.socket.on('connect_error', (err) => {
+      console.warn('Socket connect_error:', err.message);
+      this.socket?.disconnect();
+      this.listeners.onLoginRequired?.();
+      this.listeners.onDisconnect?.();
     });
 
     this.socket.on('init', (data: InitEvent) => {
-      this.sessionId = data.sessionId;
-      if (data.sessionId !== storedSessionId) {
-        setCookie(SESSION_ID_COOKIE, data.sessionId);
-      }
+      this.user = data.user;
       this.listeners.onInit?.(data);
     });
 
@@ -130,22 +119,26 @@ class SocketService {
     });
 
     this.socket.on('scoreUpdate', (data: ScoreUpdateEvent) => {
+      if (this.user) this.user.score = data.score;
       this.listeners.onScoreUpdate?.(data);
+    });
+
+    this.socket.on('setNameSuccess', (data: { displayName: string }) => {
+      if (this.user) this.user.displayName = data.displayName;
     });
 
     this.socket.on('leaderboard', (data: LeaderboardEvent) => {
       this.listeners.onLeaderboard?.(data);
+    });
+
+    this.socket.on('forceLogout', (data: ForceLogoutEvent) => {
+      this.listeners.onForceLogout?.(data);
     });
   }
 
   disconnect() {
     this.socket?.disconnect();
     this.socket = null;
-  }
-
-  clearSession(): void {
-    deleteCookie(SESSION_ID_COOKIE);
-    this.sessionId = null;
   }
 
   onInit(callback: (data: InitEvent) => void) {
@@ -166,6 +159,18 @@ class SocketService {
 
   onLeaderboard(callback: (data: LeaderboardEvent) => void) {
     this.listeners.onLeaderboard = callback;
+  }
+
+  onForceLogout(callback: (data: ForceLogoutEvent) => void) {
+    this.listeners.onForceLogout = callback;
+  }
+
+  onDisconnect(callback: () => void) {
+    this.listeners.onDisconnect = callback;
+  }
+
+  onLoginRequired(callback: () => void) {
+    this.listeners.onLoginRequired = callback;
   }
 
   setName(name: string) {

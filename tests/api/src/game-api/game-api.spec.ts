@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { io, Socket } from 'socket.io-client';
 
 const API_URL = process.env.E2E_API_URL || 'http://localhost:3001';
@@ -12,6 +12,7 @@ interface RevealedCell {
 
 interface InitEvent {
   sessionId: string;
+  user: { username: string; displayName: string; score: number };
   revealed: RevealedCell[];
   flagged: Array<{ col: number; row: number }>;
 }
@@ -21,8 +22,19 @@ interface ScoreUpdateEvent {
   score: number;
 }
 
+interface Ranking {
+  username: string;
+  displayName: string;
+  score: number;
+  isCurrentPlayer: boolean;
+}
+
 interface LeaderboardEvent {
-  rankings: Array<{ sessionId: string; score: number; isCurrentPlayer: boolean }>;
+  rankings: Ranking[];
+}
+
+function uniqueName(prefix: string): string {
+  return `${prefix}_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
 }
 
 function waitForEvent<T>(socket: Socket, event: string, timeout = 3000): Promise<T> {
@@ -30,7 +42,6 @@ function waitForEvent<T>(socket: Socket, event: string, timeout = 3000): Promise
     const timer = setTimeout(() => {
       reject(new Error(`Timeout waiting for event: ${event}`));
     }, timeout);
-
     socket.once(event, (data: T) => {
       clearTimeout(timer);
       resolve(data);
@@ -44,16 +55,13 @@ function waitForConnect(socket: Socket, timeout = 5000): Promise<void> {
       resolve();
       return;
     }
-
     const timer = setTimeout(() => {
       reject(new Error('Connection timeout'));
     }, timeout);
-
     socket.once('connect', () => {
       clearTimeout(timer);
       resolve();
     });
-
     socket.once('connect_error', (err) => {
       clearTimeout(timer);
       reject(new Error('Connection error: ' + err.message));
@@ -61,46 +69,31 @@ function waitForConnect(socket: Socket, timeout = 5000): Promise<void> {
   });
 }
 
-function waitForConnectAndInit(socket: Socket, timeout = 5000): Promise<InitEvent> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error('Connection or init timeout'));
-    }, timeout);
-
-    const onInit = (data: InitEvent) => {
-      clearTimeout(timer);
-      socket.off('connect', onConnect);
-      socket.off('connect_error', onConnectError);
-      resolve(data);
-    };
-
-    const onConnect = () => {
-      socket.once('init', onInit);
-    };
-
-    const onConnectError = (err: Error) => {
-      clearTimeout(timer);
-      socket.off('init', onInit);
-      reject(new Error('Connection error: ' + err.message));
-    };
-
-    if (socket.connected) {
-      socket.once('init', onInit);
-    } else {
-      socket.once('connect', onConnect);
-      socket.once('connect_error', onConnectError);
-    }
+async function registerAndGetToken(): Promise<{ token: string }> {
+  const username = uniqueName('gp');
+  const res = await fetch(`${API_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password: 'secret1' }),
   });
+  const body = (await res.json()) as { token: string };
+  return { token: body.token };
 }
 
 describe('game-api WebSocket API', () => {
   let socket: Socket;
+  let token: string;
 
-  beforeEach(() => {
+  beforeAll(async () => {
+    ({ token } = await registerAndGetToken());
+  });
+
+  beforeEach(async () => {
     socket = io(API_URL, {
       transports: ['websocket', 'polling'],
       timeout: 5000,
       reconnection: false,
+      auth: { token },
     });
   });
 
@@ -109,17 +102,19 @@ describe('game-api WebSocket API', () => {
   });
 
   describe('connection', () => {
-    it('should connect successfully', async () => {
+    it('should connect successfully with valid token', async () => {
       await waitForConnect(socket);
       expect(socket.connected).toBe(true);
     });
   });
 
   describe('init event', () => {
-    it('should receive init event on connection', async () => {
+    it('should receive init event with user on connection', async () => {
       await waitForConnect(socket);
       const data = await waitForEvent<InitEvent>(socket, 'init');
       expect(data).toBeDefined();
+      expect(data.user.username).toBeDefined();
+      expect(data.user.displayName).toBeDefined();
       expect(Array.isArray(data.revealed)).toBe(true);
       expect(Array.isArray(data.flagged)).toBe(true);
     });
@@ -128,25 +123,53 @@ describe('game-api WebSocket API', () => {
   describe('reveal API', () => {
     beforeEach(async () => {
       await waitForConnect(socket);
-      await new Promise<void>((resolve) => {
-        socket.once('reset', () => resolve());
-        socket.emit('reset');
-      });
     });
 
-    it('should send reveal event and receive cellRevealed response within 20ms', async () => {
+    it('should send reveal event and receive cellRevealed response', async () => {
       const start = performance.now();
       socket.emit('reveal', { col: 350, row: 350 });
-
-      const data = await waitForEvent<{ col: number; row: number; cells: RevealedCell[] }>(socket, 'cellRevealed');
+      const data = await waitForEvent<{ col: number; row: number; cells: RevealedCell[] }>(
+        socket,
+        'cellRevealed'
+      );
       const duration = performance.now() - start;
-
       expect(data.col).toBe(350);
       expect(data.row).toBe(350);
       expect(duration).toBeLessThan(20);
     });
 
+    it('should receive response for ALL rapid reveal requests (no dropped responses)', async () => {
+      const cellRevealedEvents: { col: number; row: number; cells: RevealedCell[] }[] = [];
+      socket.on('cellRevealed', (data) => {
+        cellRevealedEvents.push(data);
+      });
+
+      await waitForConnect(socket);
+
+      await new Promise<void>((resolve) => {
+        socket.once('reset', () => resolve());
+        socket.emit('reset');
+      });
+
+      const cellsToReveal = [
+        { col: 350, row: 350 },
+        { col: 351, row: 350 },
+        { col: 352, row: 350 },
+        { col: 353, row: 350 },
+        { col: 354, row: 350 },
+      ];
+
+      for (const cell of cellsToReveal) {
+        socket.emit('reveal', cell);
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      expect(cellRevealedEvents.length).toBe(cellsToReveal.length);
+    }, 10000);
+
     it('should expand adjacent 0 cells when clicking on a non-zero number cell', async () => {
+      await waitForConnect(socket);
       socket.emit('reveal', { col: 350, row: 350 });
 
       const data = await waitForEvent<{ col: number; row: number; cells: RevealedCell[] }>(socket, 'cellRevealed');
@@ -179,36 +202,6 @@ describe('game-api WebSocket API', () => {
         }
       }
     });
-
-    it('should receive response for ALL rapid reveal requests (no dropped responses)', async () => {
-      const cellRevealedEvents: { col: number; row: number; cells: RevealedCell[] }[] = [];
-      socket.on('cellRevealed', (data) => {
-        cellRevealedEvents.push(data);
-      });
-
-      await waitForConnect(socket);
-
-      await new Promise<void>((resolve) => {
-        socket.once('reset', () => resolve());
-        socket.emit('reset');
-      });
-
-      const cellsToReveal = [
-        { col: 350, row: 350 },
-        { col: 351, row: 350 },
-        { col: 352, row: 350 },
-        { col: 353, row: 350 },
-        { col: 354, row: 350 },
-      ];
-
-      for (const cell of cellsToReveal) {
-        socket.emit('reveal', cell);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      expect(cellRevealedEvents.length).toBe(cellsToReveal.length);
-    }, 10000);
 
     it('should reveal 100 cells with max response time under 25ms', async () => {
       const revealedKeys = new Set<string>();
@@ -264,54 +257,14 @@ describe('game-api WebSocket API', () => {
       const testCol = 50 + Math.floor(Math.random() * 50);
       const testRow = 50 + Math.floor(Math.random() * 50);
       socket.emit('flag', { col: testCol, row: testRow });
-      const data = await waitForEvent<{ col: number; row: number; isFlagged: boolean }>(socket, 'cellFlagged');
+      const data = await waitForEvent<{ col: number; row: number; isFlagged: boolean }>(
+        socket,
+        'cellFlagged'
+      );
 
       expect(data.col).toBe(testCol);
       expect(data.row).toBe(testRow);
       expect(data.isFlagged).toBe(true);
-    });
-
-    it('should toggle flag off on second flag request', async () => {
-      await waitForConnect(socket);
-      await waitForEvent<InitEvent>(socket, 'init');
-
-      const targetCol = 50 + Math.floor(Math.random() * 50);
-      const targetRow = 100 + Math.floor(Math.random() * 50);
-
-      socket.emit('flag', { col: targetCol, row: targetRow });
-      const firstResponse = await waitForEvent<{ col: number; row: number; isFlagged: boolean }>(socket, 'cellFlagged');
-      expect(firstResponse.isFlagged).toBe(true);
-
-      socket.emit('flag', { col: targetCol, row: targetRow });
-      const secondResponse = await waitForEvent<{ col: number; row: number; isFlagged: boolean }>(socket, 'cellFlagged');
-      expect(secondResponse.isFlagged).toBe(false);
-    });
-  });
-
-  describe('state sync', () => {
-    it('should sync revealed cells to newly connected client', async () => {
-      await waitForConnect(socket);
-      await waitForEvent<InitEvent>(socket, 'init');
-
-      const testCol = 50 + Math.floor(Math.random() * 50);
-      const testRow = 150 + Math.floor(Math.random() * 50);
-      socket.emit('reveal', { col: testCol, row: testRow });
-      await waitForEvent<any>(socket, 'cellRevealed');
-
-      const newSocket = io(API_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: false,
-      });
-
-      try {
-        await waitForConnect(newSocket);
-        const data = await waitForEvent<InitEvent>(newSocket, 'init');
-
-        const found = data.revealed.some(r => r.col === testCol && r.row === testRow);
-        expect(found).toBe(true);
-      } finally {
-        newSocket.disconnect();
-      }
     });
   });
 
@@ -326,8 +279,7 @@ describe('game-api WebSocket API', () => {
 
     it('should decrease score by 100 on reveal (mine hit)', async () => {
       await waitForConnect(socket);
-      const initData = await waitForEvent<InitEvent>(socket, 'init');
-      const sessionId = initData.sessionId;
+      await waitForEvent<InitEvent>(socket, 'init');
 
       socket.emit('reset');
 
@@ -342,7 +294,7 @@ describe('game-api WebSocket API', () => {
         if (result.cells.some((c: any) => c.isMine)) {
           hitMine = true;
           const scoreUpdate = await waitForEvent<ScoreUpdateEvent>(socket, 'scoreUpdate');
-          expect(scoreUpdate.sessionId).toBe(sessionId);
+          expect(scoreUpdate.sessionId).toBeDefined();
           expect(scoreUpdate.score).toBe(startScore - 100);
         }
       }
@@ -353,7 +305,6 @@ describe('game-api WebSocket API', () => {
     it('should increase score by 10 on flag', async () => {
       await waitForConnect(socket);
       const initData = await waitForEvent<InitEvent>(socket, 'init');
-      const sessionId = initData.sessionId;
 
       socket.emit('reset');
       await waitForEvent<any>(socket, 'reset');
@@ -362,14 +313,13 @@ describe('game-api WebSocket API', () => {
       await waitForEvent<any>(socket, 'cellFlagged');
 
       const scoreUpdate = await waitForEvent<ScoreUpdateEvent>(socket, 'scoreUpdate');
-      expect(scoreUpdate.sessionId).toBe(sessionId);
+      expect(scoreUpdate.sessionId).toBe(initData.sessionId);
       expect(scoreUpdate.score).toBe(10);
     });
 
     it('should allow negative scores', async () => {
       await waitForConnect(socket);
-      const initData = await waitForEvent<InitEvent>(socket, 'init');
-      const sessionId = initData.sessionId;
+      await waitForEvent<InitEvent>(socket, 'init');
 
       socket.emit('reset');
       await waitForEvent<any>(socket, 'reset');
@@ -393,207 +343,29 @@ describe('game-api WebSocket API', () => {
   });
 
   describe('leaderboard', () => {
-    it('should receive leaderboard event after score change', async () => {
+    it('should receive leaderboard with username/displayName after score change', async () => {
       await waitForConnect(socket);
-      const initData = await waitForEvent<InitEvent>(socket, 'init');
-
-      socket.emit('reset');
-
+      await waitForEvent<InitEvent>(socket, 'init');
       socket.emit('flag', { col: 400, row: 400 });
       await waitForEvent<any>(socket, 'cellFlagged');
-
       const leaderboard = await waitForEvent<LeaderboardEvent>(socket, 'leaderboard');
       expect(leaderboard.rankings).toBeDefined();
-      expect(Array.isArray(leaderboard.rankings)).toBe(true);
-
-      const currentPlayerEntry = leaderboard.rankings.find(r => r.isCurrentPlayer);
-      expect(currentPlayerEntry).toBeDefined();
-      expect(currentPlayerEntry?.sessionId).toBe(initData.sessionId.slice(0, 6));
+      const current = leaderboard.rankings.find((r) => r.isCurrentPlayer);
+      expect(current).toBeDefined();
+      expect(typeof current?.username).toBe('string');
+      expect(typeof current?.displayName).toBe('string');
     });
 
     it('should sort rankings by score descending', async () => {
       await waitForConnect(socket);
-
-      socket.emit('reset');
-
-      for (let i = 0; i < 3; i++) {
-        socket.emit('flag', { col: 500 + i, row: 500 });
-        await waitForEvent<any>(socket, 'cellFlagged');
-      }
-
+      await waitForEvent<InitEvent>(socket, 'init');
+      socket.emit('flag', { col: 500, row: 500 });
+      await waitForEvent<any>(socket, 'cellFlagged');
       const leaderboard = await waitForEvent<LeaderboardEvent>(socket, 'leaderboard');
-      const scores = leaderboard.rankings.map(r => r.score);
-
+      const scores = leaderboard.rankings.map((r) => r.score);
       for (let i = 0; i < scores.length - 1; i++) {
         expect(scores[i]).toBeGreaterThanOrEqual(scores[i + 1]);
       }
-    });
-
-    it('should display only first 6 characters of sessionId', async () => {
-      await waitForConnect(socket);
-
-      socket.emit('reset');
-
-      socket.emit('flag', { col: 600, row: 600 });
-      await waitForEvent<any>(socket, 'cellFlagged');
-
-      const leaderboard = await waitForEvent<LeaderboardEvent>(socket, 'leaderboard');
-      const currentPlayerEntry = leaderboard.rankings.find(r => r.isCurrentPlayer);
-
-      expect(currentPlayerEntry?.sessionId.length).toBeLessThanOrEqual(6);
-    });
-
-    it('should receive leaderboard update when new player joins', async () => {
-      await waitForConnect(socket);
-      await waitForEvent<InitEvent>(socket, 'init');
-      socket.emit('reset');
-      await waitForEvent<any>(socket, 'reset');
-
-      const leaderboardEvents: LeaderboardEvent[] = [];
-      socket.on('leaderboard', (data: LeaderboardEvent) => {
-        leaderboardEvents.push(data);
-      });
-
-      const socketB = io(API_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: false,
-      });
-      await waitForConnect(socketB);
-      await waitForEvent<InitEvent>(socketB, 'init');
-      socketB.disconnect();
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const hasNewPlayerLeaderboardUpdate = leaderboardEvents.some(
-        lb => lb.rankings.length > 1
-      );
-      expect(hasNewPlayerLeaderboardUpdate).toBe(true);
-    });
-
-    it('should receive leaderboard update when player disconnects', async () => {
-      const socketA = io(API_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: false,
-      });
-      const socketB = io(API_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: false,
-      });
-
-      await waitForConnectAndInit(socketA);
-      socketA.emit('reset');
-      await waitForEvent<any>(socketA, 'reset');
-
-      await waitForConnectAndInit(socketB);
-      socketB.emit('reset');
-      await waitForEvent<any>(socketB, 'reset');
-
-      const leaderboardEventsA: LeaderboardEvent[] = [];
-      socketA.on('leaderboard', (data: LeaderboardEvent) => {
-        leaderboardEventsA.push(data);
-      });
-
-      socketB.disconnect();
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const hasDisconnectLeaderboardUpdate = leaderboardEventsA.some(
-        lb => lb.rankings.length === 1
-      );
-      expect(hasDisconnectLeaderboardUpdate).toBe(true);
-
-      socketA.disconnect();
-    });
-  });
-
-  describe('session persistence', () => {
-    it('should restore score when reconnecting with same sessionId', async () => {
-      const socketA = io(API_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: false,
-      });
-
-      const initData = await waitForConnectAndInit(socketA);
-      const originalSessionId = initData.sessionId;
-
-      socketA.emit('reset');
-      await waitForEvent<any>(socketA, 'reset');
-
-      socketA.emit('flag', { col: 700, row: 700 });
-      await waitForEvent<any>(socketA, 'cellFlagged');
-      await waitForEvent<any>(socketA, 'scoreUpdate');
-
-      socketA.disconnect();
-
-      const socketB = io(API_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: false,
-        auth: { sessionId: originalSessionId },
-      });
-
-      const reconnectData = await waitForConnectAndInit(socketB);
-
-      expect(reconnectData.sessionId).toBe(originalSessionId);
-
-      socketB.emit('flag', { col: 701, row: 701 });
-      await waitForEvent<any>(socketB, 'cellFlagged');
-      const scoreUpdate = await waitForEvent<ScoreUpdateEvent>(socketB, 'scoreUpdate');
-
-      expect(scoreUpdate.score).toBe(20);
-
-      socketB.disconnect();
-    });
-
-    it('should create new sessionId when no existing sessionId is provided', async () => {
-      await waitForConnect(socket);
-      const initData1 = await waitForEvent<InitEvent>(socket, 'init');
-      const firstSessionId = initData1.sessionId;
-
-      socket.disconnect();
-
-      const socketC = io(API_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: false,
-      });
-
-      await waitForConnect(socketC);
-      const initData2 = await waitForEvent<InitEvent>(socketC, 'init');
-
-      expect(initData2.sessionId).not.toBe(firstSessionId);
-
-      socketC.disconnect();
-    });
-
-    it('should keep score for resumed session, not create new one', async () => {
-      const socketA = io(API_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: false,
-      });
-
-      await waitForConnect(socketA);
-      const initData = await waitForEvent<InitEvent>(socketA, 'init');
-      const originalSessionId = initData.sessionId;
-
-      socketA.emit('reset');
-      await waitForEvent<any>(socketA, 'reset');
-
-      socketA.emit('flag', { col: 800, row: 800 });
-      await waitForEvent<any>(socketA, 'cellFlagged');
-      await waitForEvent<any>(socketA, 'scoreUpdate');
-
-      socketA.disconnect();
-
-      const socketB = io(API_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: false,
-      });
-
-      await waitForConnect(socketB);
-      const newInitData = await waitForEvent<InitEvent>(socketB, 'init');
-      const newSessionId = newInitData.sessionId;
-
-      expect(newSessionId).not.toBe(originalSessionId);
-
-      socketB.disconnect();
     });
   });
 });

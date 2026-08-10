@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import minefield from './minefield.js';
@@ -18,6 +19,7 @@ const io = new Server(httpServer, {
   cors: { origin: '*' },
 });
 
+app.use(cors());
 app.use(express.json());
 
 const bearerToken = (req: express.Request): string | undefined => {

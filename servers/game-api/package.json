@@ -14,7 +14,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/cors": "^2.8.19",
     "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
     "express": "^5.2.1",
     "mongoose": "^8.4.1",
     "socket.io": "^4.8.3"

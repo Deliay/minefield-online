@@ -1,4 +1,4 @@
-import { Stage, Layer, Rect, Line, Text } from 'react-konva'
+import { Stage, Text, Layer } from 'react-konva'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Konva from 'konva'
 import { socketService } from './services/socket'
@@ -6,25 +6,14 @@ import type { User } from './services/socket'
 import { getToken, clearToken } from './services/api'
 import { Leaderboard } from './components/Leaderboard'
 import { Login } from './pages/Login'
+import { Cell, GridLine, PointerRect } from './components/Cell'
+import { useImmer } from 'use-immer'
 
 const CELL_SIZE = 40
 const COLS = 1200
 const ROWS = 640
 const MINIMAP_WIDTH = 200
 const MINIMAP_HEIGHT = Math.floor(ROWS * (MINIMAP_WIDTH / COLS))
-
-const cellKey = (col: number, row: number) => `${col},${row}`
-
-const numberColors: Record<number, string> = {
-  1: '#0000FF',
-  2: '#008000',
-  3: '#FF0000',
-  4: '#000080',
-  5: '#800000',
-  6: '#008080',
-  7: '#000000',
-  8: '#808080',
-}
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -35,10 +24,61 @@ function App() {
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight })
   const stageRef = useRef<Konva.Stage>(null)
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
-  const [isDraggingEnabled, setIsDraggingEnabled] = useState(false)
-  const [flaggedCells, setFlaggedCells] = useState<Set<string>>(new Set())
-  const [revealedCells, setRevealedCells] = useState<Map<string, { isMine: boolean; number: number }>>(new Map())
+  const pointerPosRef = useRef(pointerPos)
+  const [isDragging, setIsDragging] = useState(false)
+  const [flaggedCells, updateFlaggedCells] = useImmer<{ [x: string]: { col: number, row: number } }>({})
+  const [revealedCells, updateRevealedCells] = useImmer<{ [x: string]: { col: number, row: number, isMine?: boolean; number?: number } }>({})
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
+  const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
+  const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
+  const [gridLines] = useState<React.ReactNode[]>(() => {
+    const lines: React.ReactNode[] = []
+    const gridWidth = COLS * CELL_SIZE
+    const gridHeight = ROWS * CELL_SIZE
+
+    for (let i = 0; i <= COLS; i++) {
+      const x = i * CELL_SIZE
+      lines.push(<GridLine key={`v-${i}`} x1={x} y1={0} x2={x} y2={gridHeight} />)
+    }
+    for (let i = 0; i <= ROWS; i++) {
+      const y = i * CELL_SIZE
+      lines.push(<GridLine key={`h-${i}`} x1={0} y1={y} x2={gridWidth} y2={y} />)
+    }
+    return lines
+  })
+
+  const flagCellNodes = useMemo(() => {
+    const flagNodes: React.ReactNode[] = []
+    for (const key of Object.keys(flaggedCells)) {
+      const cell = flaggedCells[key];
+
+      flagNodes.push(<Cell key={key} col={cell.col} row={cell.row} cellSize={CELL_SIZE} type='flag' />)
+    }
+
+    return flagNodes
+  }, [flaggedCells])
+
+  const revealedCellNodes = useMemo(() => {
+    const revealed: React.ReactNode[] = []
+
+    for (const key of Object.keys(revealedCells)) {
+      const cell = revealedCells[key];
+
+      revealed.push(<Cell
+        key={key}
+        col={cell.col}
+        row={cell.row}
+        cellSize={CELL_SIZE}
+        type='revealed'
+        isMine={cell.isMine}
+        number={cell.number} />)
+    }
+
+    return revealed
+  }, [revealedCells])
+
+  const cellKey = (col: number, row: number) => `${col},${row}`
+  const cellKeyObj = ({ col, row }: { col: number, row: number }) => `${col},${row}`
 
   useEffect(() => {
     if (!isAuthed) return;
@@ -47,40 +87,66 @@ function App() {
 
     socketService.onInit((data) => {
       setUser(data.user);
-      const newRevealed = new Map<string, { isMine: boolean; number: number }>();
-      for (const cell of data.revealed) {
-        newRevealed.set(cellKey(cell.col, cell.row), { isMine: cell.isMine, number: cell.number });
-      }
-      setRevealedCells(newRevealed);
+      updateRevealedCells((obj) => {
+        for (const cell of data.revealed) {
+          obj[cellKeyObj(cell)] = cell;
+        }
+      });
 
-      const newFlagged = new Set<string>();
-      for (const { col, row } of data.flagged) {
-        newFlagged.add(cellKey(col, row));
-      }
-      setFlaggedCells(newFlagged);
+      updateFlaggedCells((obj) => {
+        for (const flagData of data.flagged) {
+          obj[cellKeyObj(flagData)] = flagData;
+        }
+      })
     });
 
     socketService.onCellRevealed((data) => {
-      setRevealedCells((prev) => {
-        const next = new Map(prev);
-        for (const cell of data.cells) {
-          next.set(cellKey(cell.col, cell.row), { isMine: cell.isMine, number: cell.number });
+      updateRevealedCells((prev) => {
+        const key = cellKeyObj(data);
+        if (Array.isArray(data.cells) && data.cells.length > 0) {
+          for (const cell of data.cells) {
+            const cellKey = cellKeyObj(cell);
+            if (!prev[cellKey]) prev[cellKey] = cell
+          }
         }
-        return next;
+        if (!prev[key]) prev[key] = data
       });
     });
 
     socketService.onCellFlagged((data) => {
-      setFlaggedCells((prev) => {
-        const next = new Set(prev);
-        const key = cellKey(data.col, data.row);
-        if (data.isFlagged) {
-          next.add(key);
-        } else {
-          next.delete(key);
-        }
-        return next;
+      updateFlaggedCells((prev) => {
+        const key = cellKeyObj(data);
+        if (!prev[key]) prev[key] = data
       });
+    });
+
+    let prevScore = 0;
+    socketService.onScoreUpdate((data) => {
+      const delta = data.score - prevScore;
+      prevScore = data.score;
+      const pos = pointerPosRef.current;
+      if (delta !== 0 && pos) {
+        const id = Date.now();
+        setScorePopups((prev) => [...prev, { id, x: pos.x, y: pos.y, delta, opacity: 1 }]);
+        setTimeout(() => {
+          const node = popupRefs.current.get(id);
+          if (node) {
+            new Konva.Tween({
+              node,
+              duration: 0.5,
+              opacity: 0,
+              y: node.y() - 30,
+              easing: Konva.Easings.EaseOut,
+              onFinish: () => {
+                setScorePopups((prev) => prev.filter((p) => p.id !== id));
+                popupRefs.current.delete(id);
+              },
+            }).play();
+          } else {
+            setScorePopups((prev) => prev.filter((p) => p.id !== id));
+          }
+        }, 500);
+      }
     });
 
     socketService.onForceLogout(() => {
@@ -117,11 +183,15 @@ function App() {
   useEffect(() => {
     const stage = stageRef.current
     if (!stage) return
+    const handleDragStart = () => setIsDragging(true)
     const handleDragEnd = () => {
+      setIsDragging(false)
       setStagePos(stage.position())
     }
+    stage.on('dragstart', handleDragStart)
     stage.on('dragend', handleDragEnd)
     return () => {
+      stage.off('dragstart', handleDragStart)
       stage.off('dragend', handleDragEnd)
     }
   }, [])
@@ -132,25 +202,6 @@ function App() {
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === ' ' || e.key === 'Alt') {
-        setIsDraggingEnabled(true)
-      }
-    }
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === ' ' || e.key === 'Alt') {
-        setIsDraggingEnabled(false)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-    }
   }, [])
 
   const handleMouseMove = useCallback(() => {
@@ -201,7 +252,11 @@ function App() {
         const row = Math.floor(absY / CELL_SIZE)
         if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
           const key = cellKey(col, row)
-          if (!revealedCells.has(key) && !flaggedCells.has(key)) {
+          const revealed = revealedCells[key]
+          const hasRevealed = !!revealed;
+          if (hasRevealed && !revealed.isMine && Number(revealed.number) > 0) {
+            socketService.chord(col, row)
+          } else if (!hasRevealed && !flaggedCells[key]) {
             socketService.reveal(col, row)
           }
         }
@@ -240,76 +295,6 @@ function App() {
     },
     [scaleX, scaleY, dimensions]
   )
-
-  const gridLines: React.ReactNode[] = []
-  const gridWidth = COLS * CELL_SIZE
-  const gridHeight = ROWS * CELL_SIZE
-
-  for (let i = 0; i <= COLS; i++) {
-    const x = i * CELL_SIZE
-    gridLines.push(<Line key={`v-${i}`} points={[x, 0, x, gridHeight]} stroke="#333" strokeWidth={2} />)
-  }
-  for (let i = 0; i <= ROWS; i++) {
-    const y = i * CELL_SIZE
-    gridLines.push(<Line key={`h-${i}`} points={[0, y, gridWidth, y]} stroke="#333" strokeWidth={2} />)
-  }
-
-  const flaggedRects = useMemo(() => {
-    return Array.from(flaggedCells).map((key) => {
-      const [col, row] = key.split(',').map(Number)
-      return (
-        <Text
-          key={key}
-          x={col * CELL_SIZE}
-          y={row * CELL_SIZE}
-          width={CELL_SIZE}
-          height={CELL_SIZE}
-          text="🚩"
-          fontSize={24}
-          align="center"
-          verticalAlign="middle"
-        />
-      )
-    })
-  }, [flaggedCells])
-
-  const revealedRects = useMemo(() => {
-    return Array.from(revealedCells.entries()).map(([key, cell]) => {
-      const [col, row] = key.split(',').map(Number)
-      return (
-        <Rect
-          key={key}
-          x={col * CELL_SIZE}
-          y={row * CELL_SIZE}
-          width={CELL_SIZE}
-          height={CELL_SIZE}
-          fill={cell.isMine ? '#ff0000' : '#ccc'}
-        />
-      )
-    })
-  }, [revealedCells])
-
-  const revealedNumbers = useMemo(() => {
-    return Array.from(revealedCells.entries()).map(([key, cell]) => {
-      const [col, row] = key.split(',').map(Number)
-      if (cell.isMine || cell.number === 0) return null
-      return (
-        <Text
-          key={`num-${key}`}
-          x={col * CELL_SIZE}
-          y={row * CELL_SIZE}
-          width={CELL_SIZE}
-          height={CELL_SIZE}
-          text={String(cell.number)}
-          fontSize={20}
-          fontStyle="bold"
-          fill={numberColors[cell.number] || '#000'}
-          align="center"
-          verticalAlign="middle"
-        />
-      )
-    })
-  }, [revealedCells])
 
   const handleLogout = () => {
     clearToken();
@@ -417,28 +402,38 @@ function App() {
         ref={stageRef}
         width={dimensions.width}
         height={dimensions.height}
-        draggable={isDraggingEnabled}
-        style={{ cursor: isDraggingEnabled ? 'grab' : 'default' }}
+        draggable={true}
+        style={{ cursor: isDragging ? 'grab' : 'default' }}
         onMouseMove={handleMouseMove}
         onContextMenu={handleContextMenu}
         onClick={handleClick}
       >
-        <Layer>
+        <Layer listening={false}>
           {gridLines}
-          {flaggedRects}
-          {revealedRects}
-          {revealedNumbers}
+        </Layer>
+        <Layer listening={false}>
+          {flagCellNodes}
+          {revealedCellNodes}
+        </Layer>
+        <Layer listening={false}>
           {pointerPos && (
-            <Rect
-              x={pointerPos.x}
-              y={pointerPos.y}
-              width={CELL_SIZE}
-              height={CELL_SIZE}
-              fill="rgba(128, 128, 128, 0.5)"
-              stroke="#fff"
-              strokeWidth={2}
-            />
+            <PointerRect x={pointerPos.x} y={pointerPos.y} cellSize={CELL_SIZE} />
           )}
+          {scorePopups.map((popup) => (
+            <Text
+              key={popup.id}
+              ref={(node) => {
+                if (node) popupRefs.current.set(popup.id, node);
+              }}
+              x={popup.x}
+              y={popup.y}
+              text={popup.delta > 0 ? `+${popup.delta}` : `${popup.delta}`}
+              fontSize={20}
+              fontStyle="bold"
+              fill={popup.delta > 0 ? '#4f4' : '#f44'}
+              opacity={popup.opacity}
+            />
+          ))}
         </Layer>
       </Stage>
       <button
@@ -457,7 +452,7 @@ function App() {
         onClick={handleMinimapClick}
         aria-label="Minimap navigation"
       >
-        {Array.from(revealedCells.entries()).map(([key, cell]) => {
+        {Object.entries(revealedCells).map(([key, cell]) => {
           const [col, row] = key.split(',').map(Number)
           return (
             <div

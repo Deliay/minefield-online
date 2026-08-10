@@ -12,10 +12,11 @@
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `reveal` | `{ col: number, row: number }` | Reveal cell at position (score: -100) |
-| `flag` | `{ col: number, row: number }` | Toggle flag on cell (score: +10) |
-| `reset` | - | Reset game state for all clients |
+| `reveal` | `{ col: number, row: number }` | Reveal cell at position (score: -100 if mine) |
+| `flag` | `{ col: number, row: number }` | Flag cell as suspected mine (score: +10 if correct mine, -20 if actually not a mine) |
+| `chord` | `{ col: number, row: number }` | Auto-reveal neighbors of a revealed number cell (score: -100 if mine hit) |
 | `setName` | `{ name: string }` | 持久化修改显示名称（max 20 字符），成功后广播 leaderboard |
+| `reset` | - | Reset game state for all clients |
 
 ### Server → Client
 
@@ -26,6 +27,8 @@
 | `leaderboard` | `LeaderboardEvent` | Leaderboard data (sent after every score change) |
 | `cellRevealed` | `CellRevealedEvent` | Cell reveal result |
 | `cellFlagged` | `CellFlaggedEvent` | Flag toggle result |
+| `setNameSuccess` | `{ displayName: string }` | Display name updated successfully |
+| `setNameError` | `{ error: string }` | Display name rejected |
 | `forceLogout` | `ForceLogoutEvent` | 账号在他处登录，本会话被踢出（客户端应清除 token 并返回登录界面） |
 | `reset` | - | Game has been reset |
 
@@ -99,7 +102,9 @@ const CHUNK_MINES = 99;
 | Action | Score Change |
 |--------|--------------|
 | Left click (reveal mine) | -100 |
-| Right click (flag) | +10 |
+| Flag a mine (correct) | +10 |
+| Flag a non-mine (wrong) | -20 (cell is revealed) |
+| Chord that reveals a mine | -100 |
 
 - Score can be negative
 - Tie-breaker: earlier creation time ranks higher
@@ -126,8 +131,10 @@ const CHUNK_MINES = 99;
 - `reveal`: If cell is already revealed or flagged, returns empty `cells` array
 - `reveal`: On mine hit, only the mine cell is returned in `cells`
 - `reveal`: On safe cell, uses flood-fill to expand and returns all revealed cells
-- `flag`: Toggles flag state; returns `isFlagged: true` if now flagged, `false` if unflagged
+- `flag`: If cell is a mine, flags it and player earns +10 points
+- `flag`: If cell is NOT a mine, reveals it and player loses 20 points
 - `flag`: Cannot flag already revealed cells
+- `chord`: Only valid on a revealed number cell; reveals un-revealed neighbors when the flagged count matches the number
 - All events are broadcast to all connected clients (global state)
 - New clients receive full `init` state including all previously revealed/flagged cells
 - After `init`, client receives `leaderboard` event with current rankings

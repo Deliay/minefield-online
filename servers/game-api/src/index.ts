@@ -129,22 +129,67 @@ io.on('connection', async (socket) => {
     const results = minefield.reveal(col, row);
     io.emit('cellRevealed', { col, row, cells: results });
 
-    const updated = await updateScore(socket.id, -100);
+    const hitMine = results.some(cell => cell.isMine);
+    if (hitMine) {
+      const updated = await updateScore(socket.id, -100);
+      if (updated) {
+        io.emit('scoreUpdate', { sessionId: socket.id, score: updated.score });
+        broadcastLeaderboard();
+      }
+    }
+  });
+
+  socket.on('flag', async (data: { col: number; row: number }) => {
+    const { col, row } = data;
+    if (minefield.isRevealed(col, row)) {
+      io.emit('cellFlagged', { col, row, isFlagged: false });
+      return;
+    }
+
+    const cell = minefield.getCell(col, row);
+    if (!cell) {
+      io.emit('cellFlagged', { col, row, isFlagged: false });
+      return;
+    }
+
+    if (minefield.isFlagged(col, row)) {
+      return;
+    }
+
+    let scoreDelta = 0;
+
+    if (cell.isMine) {
+      const isFlagged = minefield.flag(col, row);
+      io.emit('cellFlagged', { col, row, isFlagged });
+      if (isFlagged) {
+        scoreDelta = 10;
+      }
+    } else {
+      const results = minefield.reveal(col, row);
+      io.emit('cellFlagged', { col, row, isFlagged: false });
+      io.emit('cellRevealed', { col, row, cells: results });
+      scoreDelta = -20;
+    }
+
+    const updated = await updateScore(socket.id, scoreDelta);
     if (updated) {
       io.emit('scoreUpdate', { sessionId: socket.id, score: updated.score });
       broadcastLeaderboard();
     }
   });
 
-  socket.on('flag', async (data: { col: number; row: number }) => {
+  socket.on('chord', async (data: { col: number; row: number }) => {
     const { col, row } = data;
-    const isFlagged = minefield.flag(col, row);
-    io.emit('cellFlagged', { col, row, isFlagged });
+    const results = minefield.chord(col, row);
+    io.emit('cellRevealed', { col, row, cells: results });
 
-    const updated = await updateScore(socket.id, 10);
-    if (updated) {
-      io.emit('scoreUpdate', { sessionId: socket.id, score: updated.score });
-      broadcastLeaderboard();
+    const hitMine = results.some(cell => cell.isMine);
+    if (hitMine) {
+      const updated = await updateScore(socket.id, -100);
+      if (updated) {
+        io.emit('scoreUpdate', { sessionId: socket.id, score: updated.score });
+        broadcastLeaderboard();
+      }
     }
   });
 

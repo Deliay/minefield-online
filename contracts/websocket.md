@@ -4,6 +4,7 @@
 
 - Endpoint: `ws://localhost:3001`
 - Transport: WebSocket (Socket.IO with polling fallback)
+- Authentication: client MUST pass a valid token in the `auth` handshake field (`{ token: string }`). Missing or invalid token → connection is rejected (`disconnect`). **本期强制登录，无游客模式。**
 
 ## Events
 
@@ -14,6 +15,7 @@
 | `reveal` | `{ col: number, row: number }` | Reveal cell at position (score: -100) |
 | `flag` | `{ col: number, row: number }` | Toggle flag on cell (score: +10) |
 | `reset` | - | Reset game state for all clients |
+| `setName` | `{ name: string }` | 持久化修改显示名称（max 20 字符），成功后广播 leaderboard |
 
 ### Server → Client
 
@@ -24,6 +26,7 @@
 | `leaderboard` | `LeaderboardEvent` | Leaderboard data (sent after every score change) |
 | `cellRevealed` | `CellRevealedEvent` | Cell reveal result |
 | `cellFlagged` | `CellFlaggedEvent` | Flag toggle result |
+| `forceLogout` | `ForceLogoutEvent` | 账号在他处登录，本会话被踢出（客户端应清除 token 并返回登录界面） |
 | `reset` | - | Game has been reset |
 
 ## Data Types
@@ -38,6 +41,11 @@ interface RevealedCell {
 
 interface InitEvent {
   sessionId: string;
+  user: {
+    username: string;
+    displayName: string;
+    score: number;
+  };
   revealed: RevealedCell[];
   flagged: Array<{ col: number; row: number }>;
 }
@@ -47,8 +55,13 @@ interface ScoreUpdateEvent {
   score: number;
 }
 
+interface ForceLogoutEvent {
+  reason: 'kicked';
+}
+
 interface Ranking {
-  sessionId: string;
+  username: string;
+  displayName: string;
   score: number;
   isCurrentPlayer: boolean;
 }
@@ -93,10 +106,11 @@ const CHUNK_MINES = 99;
 
 ## Session Management
 
-- Session is created automatically on WebSocket connection
-- Session contains: `sessionId`, `socketId`, `score` (initial: 0), `createdAt`
+- Session is created automatically on authenticated WebSocket connection (token → user)
+- Session binds to a user account (`username`/`displayName`), score is persisted to MongoDB
+- Session contains: `username`, `displayName`, `socketId`, `score`, `createdAt`
 - Session is destroyed on disconnect
-- Only first 6 characters of `sessionId` are displayed publicly
+- 同一账号同一时间仅允许一个活跃会话：新会话登录后旧会话收到 `forceLogout` 并被断开
 
 ## Leaderboard Rules
 
@@ -105,6 +119,7 @@ const CHUNK_MINES = 99;
 - Full leaderboard sent to all clients on every score change
 - Current player entry is highlighted via `isCurrentPlayer: true`
 - Displayed in top-right corner of game UI
+- Ranking identity uses `displayName`（持久化，默认 = username）；用户名大小写不敏感唯一
 
 ## Behavior Notes
 

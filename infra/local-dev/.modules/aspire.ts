@@ -37,6 +37,15 @@ type NodeAppResourceHandle = Handle<'Aspire.Hosting.JavaScript/Aspire.Hosting.Ja
 /** Handle to ViteAppResource */
 type ViteAppResourceHandle = Handle<'Aspire.Hosting.JavaScript/Aspire.Hosting.JavaScript.ViteAppResource'>;
 
+/** Handle to MongoDBDatabaseResource */
+type MongoDBDatabaseResourceHandle = Handle<'Aspire.Hosting.MongoDB/Aspire.Hosting.ApplicationModel.MongoDBDatabaseResource'>;
+
+/** Handle to MongoDBServerResource */
+type MongoDBServerResourceHandle = Handle<'Aspire.Hosting.MongoDB/Aspire.Hosting.ApplicationModel.MongoDBServerResource'>;
+
+/** Handle to MongoExpressContainerResource */
+type MongoExpressContainerResourceHandle = Handle<'Aspire.Hosting.MongoDB/Aspire.Hosting.MongoDB.MongoExpressContainerResource'>;
+
 /** Handle to AfterResourcesCreatedEvent */
 type AfterResourcesCreatedEventHandle = Handle<'Aspire.Hosting/Aspire.Hosting.ApplicationModel.AfterResourcesCreatedEvent'>;
 
@@ -316,6 +325,13 @@ export enum ProtocolType {
     Unknown = "Unknown",
 }
 
+/** Enum type for ResourceCommandState */
+export enum ResourceCommandState {
+    Enabled = "Enabled",
+    Disabled = "Disabled",
+    Hidden = "Hidden",
+}
+
 /** Enum type for UrlDisplayLocation */
 export enum UrlDisplayLocation {
     SummaryAndDetails = "SummaryAndDetails",
@@ -346,7 +362,7 @@ export interface CommandOptions {
     iconName?: string;
     iconVariant?: IconVariant;
     isHighlighted?: boolean;
-    updateState?: any;
+    updateState?: Function;
 }
 
 /** DTO interface for CreateBuilderOptions */
@@ -423,6 +439,10 @@ export interface AddContainerRegistryOptions {
     repository?: ParameterResource;
 }
 
+export interface AddDatabaseOptions {
+    databaseName?: string;
+}
+
 export interface AddDockerfileOptions {
     dockerfilePath?: string;
     stage?: string;
@@ -430,6 +450,12 @@ export interface AddDockerfileOptions {
 
 export interface AddJavaScriptAppOptions {
     runScriptName?: string;
+}
+
+export interface AddMongoDBOptions {
+    port?: number;
+    userName?: ParameterResource;
+    password?: ParameterResource;
 }
 
 export interface AddParameterFromConfigurationOptions {
@@ -555,6 +581,15 @@ export interface WithContainerCertificatePathsOptions {
     defaultCertificateDirectoryPaths?: string[];
 }
 
+export interface WithDataBindMountOptions {
+    isReadOnly?: boolean;
+}
+
+export interface WithDataVolumeOptions {
+    name?: string;
+    isReadOnly?: boolean;
+}
+
 export interface WithDescriptionOptions {
     enableMarkdown?: boolean;
 }
@@ -583,6 +618,10 @@ export interface WithEndpointOptions {
 export interface WithExternalServiceHttpHealthCheckOptions {
     path?: string;
     statusCode?: number;
+}
+
+export interface WithHostPortOptions {
+    port?: number;
 }
 
 export interface WithHttpEndpointOptions {
@@ -632,6 +671,11 @@ export interface WithImageOptions {
 export interface WithMcpServerOptions {
     path?: string;
     endpointName?: string;
+}
+
+export interface WithMongoExpressOptions {
+    configureContainer?: (obj: MongoExpressContainerResource) => Promise<void>;
+    containerName?: string;
 }
 
 export interface WithNpmOptions {
@@ -697,7 +741,7 @@ export class AfterResourcesCreatedEvent {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the Services property */
+    /** The `IServiceProvider` instance. */
     services = {
         get: async (): Promise<ServiceProvider> => {
             const handle = await this._client.invokeCapability<IServiceProviderHandle>(
@@ -708,7 +752,7 @@ export class AfterResourcesCreatedEvent {
         },
     };
 
-    /** Gets the Model property */
+    /** The `DistributedApplicationModel` instance. */
     model = {
         get: async (): Promise<DistributedApplicationModel> => {
             const handle = await this._client.invokeCapability<DistributedApplicationModelHandle>(
@@ -771,7 +815,7 @@ export class BeforeStartEvent {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the Services property */
+    /** The `IServiceProvider` instance. */
     services = {
         get: async (): Promise<ServiceProvider> => {
             const handle = await this._client.invokeCapability<IServiceProviderHandle>(
@@ -782,7 +826,7 @@ export class BeforeStartEvent {
         },
     };
 
-    /** Gets the Model property */
+    /** The `DistributedApplicationModel` instance. */
     model = {
         get: async (): Promise<DistributedApplicationModel> => {
             const handle = await this._client.invokeCapability<DistributedApplicationModelHandle>(
@@ -808,7 +852,7 @@ export class CommandLineArgsCallbackContext {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the Args property */
+    /** Gets the list of command-line arguments. */
     private _args?: AspireList<any>;
     get args(): AspireList<any> {
         if (!this._args) {
@@ -822,7 +866,7 @@ export class CommandLineArgsCallbackContext {
         return this._args;
     }
 
-    /** Gets the CancellationToken property */
+    /** Gets the cancellation token associated with the callback context. */
     cancellationToken = {
         get: async (): Promise<CancellationToken> => {
             const result = await this._client.invokeCapability<string | null>(
@@ -833,7 +877,7 @@ export class CommandLineArgsCallbackContext {
         },
     };
 
-    /** Gets the ExecutionContext property */
+    /** Gets or sets the execution context for the distributed application. */
     executionContext = {
         get: async (): Promise<DistributedApplicationExecutionContext> => {
             const handle = await this._client.invokeCapability<DistributedApplicationExecutionContextHandle>(
@@ -844,7 +888,7 @@ export class CommandLineArgsCallbackContext {
         },
     };
 
-    /** Gets the Logger property */
+    /** Gets or sets the logger for the distributed application. */
     logger = {
         get: async (): Promise<Logger> => {
             const handle = await this._client.invokeCapability<ILoggerHandle>(
@@ -855,7 +899,7 @@ export class CommandLineArgsCallbackContext {
         },
     };
 
-    /** Gets the Resource property */
+    /** The resource associated with this callback context. */
     resource = {
         get: async (): Promise<Resource> => {
             const handle = await this._client.invokeCapability<IResourceHandle>(
@@ -970,7 +1014,7 @@ export class DistributedApplicationExecutionContext {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the PublisherName property */
+    /** The name of the publisher that is being used if `Operation` is set to `Publish`. */
     publisherName = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -986,7 +1030,7 @@ export class DistributedApplicationExecutionContext {
         }
     };
 
-    /** Gets the Operation property */
+    /** The operation currently being performed by the AppHost. */
     operation = {
         get: async (): Promise<DistributedApplicationOperation> => {
             return await this._client.invokeCapability<DistributedApplicationOperation>(
@@ -996,7 +1040,7 @@ export class DistributedApplicationExecutionContext {
         },
     };
 
-    /** Gets the ServiceProvider property */
+    /** The `IServiceProvider` for the AppHost. */
     serviceProvider = {
         get: async (): Promise<ServiceProvider> => {
             const handle = await this._client.invokeCapability<IServiceProviderHandle>(
@@ -1007,7 +1051,7 @@ export class DistributedApplicationExecutionContext {
         },
     };
 
-    /** Gets the IsPublishMode property */
+    /** Returns true if the current operation is publishing. */
     isPublishMode = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -1017,7 +1061,7 @@ export class DistributedApplicationExecutionContext {
         },
     };
 
-    /** Gets the IsRunMode property */
+    /** Returns true if the current operation is running. */
     isRunMode = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -1106,7 +1150,7 @@ export class EndpointReference {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the Resource property */
+    /** Gets the resource owner of the endpoint reference. */
     resource = {
         get: async (): Promise<ResourceWithEndpoints> => {
             const handle = await this._client.invokeCapability<IResourceWithEndpointsHandle>(
@@ -1117,7 +1161,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the EndpointName property */
+    /** Gets the name of the endpoint associated with the endpoint reference. */
     endpointName = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -1127,7 +1171,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the ErrorMessage property */
+    /** Gets or sets a custom error message to be thrown when the endpoint annotation is not found. */
     errorMessage = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -1135,15 +1179,9 @@ export class EndpointReference {
                 { context: this._handle }
             );
         },
-        set: async (value: string): Promise<void> => {
-            await this._client.invokeCapability<void>(
-                'Aspire.Hosting.ApplicationModel/EndpointReference.setErrorMessage',
-                { context: this._handle, value }
-            );
-        }
     };
 
-    /** Gets the IsAllocated property */
+    /** Gets a value indicating whether the endpoint is allocated. */
     isAllocated = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -1153,7 +1191,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the Exists property */
+    /** Gets a value indicating whether the endpoint exists. */
     exists = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -1163,7 +1201,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the IsHttp property */
+    /** Gets a value indicating whether the endpoint uses HTTP scheme. */
     isHttp = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -1173,7 +1211,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the IsHttps property */
+    /** Gets a value indicating whether the endpoint uses HTTPS scheme. */
     isHttps = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -1183,7 +1221,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the TlsEnabled property */
+    /** Gets a value indicating whether TLS is enabled for this endpoint. */
     tlsEnabled = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -1193,7 +1231,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the ExcludeReferenceEndpoint property */
+    /** Gets a value indicating whether this endpoint is excluded from the default set when referencing the resource's endpoints. */
     excludeReferenceEndpoint = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -1203,7 +1241,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the Port property */
+    /** Gets the port for this endpoint. */
     port = {
         get: async (): Promise<number> => {
             return await this._client.invokeCapability<number>(
@@ -1213,7 +1251,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the TargetPort property */
+    /** Gets the target port for this endpoint. If the port is dynamically allocated, this will return `null`. */
     targetPort = {
         get: async (): Promise<number> => {
             return await this._client.invokeCapability<number>(
@@ -1223,7 +1261,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the Host property */
+    /** Gets the host for this endpoint. */
     host = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -1233,7 +1271,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the Scheme property */
+    /** Gets the scheme for this endpoint. */
     scheme = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -1243,7 +1281,7 @@ export class EndpointReference {
         },
     };
 
-    /** Gets the Url property */
+    /** Gets the URL for this endpoint. */
     url = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -1268,7 +1306,7 @@ export class EndpointReference {
     async getTlsValue(enabledValue: ReferenceExpression, disabledValue: ReferenceExpression): Promise<ReferenceExpression> {
         const rpcArgs: Record<string, unknown> = { context: this._handle, enabledValue, disabledValue };
         return await this._client.invokeCapability<ReferenceExpression>(
-            'Aspire.Hosting.ApplicationModel/EndpointReference.getTlsValue',
+            'Aspire.Hosting.ApplicationModel/getTlsValue',
             rpcArgs
         );
     }
@@ -1313,7 +1351,7 @@ export class EndpointReferenceExpression {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the Endpoint property */
+    /** Gets the `EndpointReference`. */
     endpoint = {
         get: async (): Promise<EndpointReference> => {
             const handle = await this._client.invokeCapability<EndpointReferenceHandle>(
@@ -1324,7 +1362,7 @@ export class EndpointReferenceExpression {
         },
     };
 
-    /** Gets the Property property */
+    /** Gets the `EndpointProperty` for the property expression. */
     property = {
         get: async (): Promise<EndpointProperty> => {
             return await this._client.invokeCapability<EndpointProperty>(
@@ -1334,7 +1372,7 @@ export class EndpointReferenceExpression {
         },
     };
 
-    /** Gets the ValueExpression property */
+    /** Gets the expression of the property of the endpoint. */
     valueExpression = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -1359,7 +1397,7 @@ export class EnvironmentCallbackContext {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the EnvironmentVariables property */
+    /** Gets the environment variables associated with the callback context. */
     private _environmentVariables?: AspireDict<string, string | ReferenceExpression>;
     get environmentVariables(): AspireDict<string, string | ReferenceExpression> {
         if (!this._environmentVariables) {
@@ -1373,7 +1411,7 @@ export class EnvironmentCallbackContext {
         return this._environmentVariables;
     }
 
-    /** Gets the CancellationToken property */
+    /** Gets the CancellationToken associated with the callback context. */
     cancellationToken = {
         get: async (): Promise<CancellationToken> => {
             const result = await this._client.invokeCapability<string | null>(
@@ -1384,7 +1422,7 @@ export class EnvironmentCallbackContext {
         },
     };
 
-    /** Gets the Logger property */
+    /** An optional logger to use for logging. */
     logger = {
         get: async (): Promise<Logger> => {
             const handle = await this._client.invokeCapability<ILoggerHandle>(
@@ -1395,7 +1433,7 @@ export class EnvironmentCallbackContext {
         },
     };
 
-    /** Gets the Resource property */
+    /** The resource associated with this callback context. */
     resource = {
         get: async (): Promise<Resource> => {
             const handle = await this._client.invokeCapability<IResourceHandle>(
@@ -1406,7 +1444,7 @@ export class EnvironmentCallbackContext {
         },
     };
 
-    /** Gets the ExecutionContext property */
+    /** Gets the execution context associated with this invocation of the AppHost. */
     executionContext = {
         get: async (): Promise<DistributedApplicationExecutionContext> => {
             const handle = await this._client.invokeCapability<DistributedApplicationExecutionContextHandle>(
@@ -1432,7 +1470,7 @@ export class ExecuteCommandContext {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the ServiceProvider property */
+    /** The service provider. */
     serviceProvider = {
         get: async (): Promise<ServiceProvider> => {
             const handle = await this._client.invokeCapability<IServiceProviderHandle>(
@@ -1443,7 +1481,7 @@ export class ExecuteCommandContext {
         },
     };
 
-    /** Gets the ResourceName property */
+    /** The resource name. */
     resourceName = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -1451,15 +1489,9 @@ export class ExecuteCommandContext {
                 { context: this._handle }
             );
         },
-        set: async (value: string): Promise<void> => {
-            await this._client.invokeCapability<void>(
-                'Aspire.Hosting.ApplicationModel/ExecuteCommandContext.setResourceName',
-                { context: this._handle, value }
-            );
-        }
     };
 
-    /** Gets the CancellationToken property */
+    /** The cancellation token. */
     cancellationToken = {
         get: async (): Promise<CancellationToken> => {
             const result = await this._client.invokeCapability<string | null>(
@@ -1468,12 +1500,6 @@ export class ExecuteCommandContext {
             );
             return CancellationToken.fromValue(result);
         },
-        set: async (value: AbortSignal | CancellationToken): Promise<void> => {
-            await this._client.invokeCapability<void>(
-                'Aspire.Hosting.ApplicationModel/ExecuteCommandContext.setCancellationToken',
-                { context: this._handle, value: CancellationToken.fromValue(value) }
-            );
-        }
     };
 
 }
@@ -1502,7 +1528,7 @@ export class InitializeResourceEvent {
         },
     };
 
-    /** Gets the Eventing property */
+    /** The `IDistributedApplicationEventing` service for the app host. */
     eventing = {
         get: async (): Promise<DistributedApplicationEventing> => {
             const handle = await this._client.invokeCapability<IDistributedApplicationEventingHandle>(
@@ -1513,7 +1539,7 @@ export class InitializeResourceEvent {
         },
     };
 
-    /** Gets the Logger property */
+    /** An instance of `ILogger` that can be used to log messages for the resource. */
     logger = {
         get: async (): Promise<Logger> => {
             const handle = await this._client.invokeCapability<ILoggerHandle>(
@@ -1524,7 +1550,7 @@ export class InitializeResourceEvent {
         },
     };
 
-    /** Gets the Notifications property */
+    /** The `ResourceNotificationService` for the app host. */
     notifications = {
         get: async (): Promise<ResourceNotificationService> => {
             const handle = await this._client.invokeCapability<ResourceNotificationServiceHandle>(
@@ -1535,7 +1561,7 @@ export class InitializeResourceEvent {
         },
     };
 
-    /** Gets the Services property */
+    /** The `IServiceProvider` for the app host. */
     services = {
         get: async (): Promise<ServiceProvider> => {
             const handle = await this._client.invokeCapability<IServiceProviderHandle>(
@@ -1561,7 +1587,7 @@ export class PipelineConfigurationContext {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the Services property */
+    /** Gets the service provider for dependency resolution. */
     services = {
         get: async (): Promise<ServiceProvider> => {
             const handle = await this._client.invokeCapability<IServiceProviderHandle>(
@@ -1572,7 +1598,7 @@ export class PipelineConfigurationContext {
         },
     };
 
-    /** Gets the Steps property */
+    /** Gets the list of pipeline steps collected during the first pass. */
     steps = {
         get: async (): Promise<PipelineStep[]> => {
             return await this._client.invokeCapability<PipelineStep[]>(
@@ -1580,15 +1606,9 @@ export class PipelineConfigurationContext {
                 { context: this._handle }
             );
         },
-        set: async (value: PipelineStep[]): Promise<void> => {
-            await this._client.invokeCapability<void>(
-                'Aspire.Hosting.Pipelines/PipelineConfigurationContext.setSteps',
-                { context: this._handle, value }
-            );
-        }
     };
 
-    /** Gets the Model property */
+    /** Gets the distributed application model containing all resources. */
     model = {
         get: async (): Promise<DistributedApplicationModel> => {
             const handle = await this._client.invokeCapability<DistributedApplicationModelHandle>(
@@ -1643,7 +1663,7 @@ export class PipelineContext {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the Model property */
+    /** Gets the distributed application model to be deployed. */
     model = {
         get: async (): Promise<DistributedApplicationModel> => {
             const handle = await this._client.invokeCapability<DistributedApplicationModelHandle>(
@@ -1654,7 +1674,7 @@ export class PipelineContext {
         },
     };
 
-    /** Gets the ExecutionContext property */
+    /** Gets the execution context for the distributed application. */
     executionContext = {
         get: async (): Promise<DistributedApplicationExecutionContext> => {
             const handle = await this._client.invokeCapability<DistributedApplicationExecutionContextHandle>(
@@ -1665,7 +1685,7 @@ export class PipelineContext {
         },
     };
 
-    /** Gets the Services property */
+    /** Gets the service provider for dependency resolution. */
     services = {
         get: async (): Promise<ServiceProvider> => {
             const handle = await this._client.invokeCapability<IServiceProviderHandle>(
@@ -1676,7 +1696,7 @@ export class PipelineContext {
         },
     };
 
-    /** Gets the Logger property */
+    /** Gets the logger for pipeline operations. */
     logger = {
         get: async (): Promise<Logger> => {
             const handle = await this._client.invokeCapability<ILoggerHandle>(
@@ -1687,7 +1707,7 @@ export class PipelineContext {
         },
     };
 
-    /** Gets the CancellationToken property */
+    /** Gets the cancellation token for the pipeline operation. */
     cancellationToken = {
         get: async (): Promise<CancellationToken> => {
             const result = await this._client.invokeCapability<string | null>(
@@ -1704,7 +1724,7 @@ export class PipelineContext {
         }
     };
 
-    /** Gets the Summary property */
+    /** Gets the pipeline summary that steps can add information to. The summary will be displayed to users after pipeline execution completes. */
     summary = {
         get: async (): Promise<PipelineSummary> => {
             const handle = await this._client.invokeCapability<PipelineSummaryHandle>(
@@ -1730,7 +1750,7 @@ export class PipelineStep {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the Name property */
+    /** Gets or initializes the unique name of the step. */
     name = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -1738,15 +1758,9 @@ export class PipelineStep {
                 { context: this._handle }
             );
         },
-        set: async (value: string): Promise<void> => {
-            await this._client.invokeCapability<void>(
-                'Aspire.Hosting.Pipelines/PipelineStep.setName',
-                { context: this._handle, value }
-            );
-        }
     };
 
-    /** Gets the Description property */
+    /** Gets or initializes the description of the step. */
     description = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -1754,15 +1768,9 @@ export class PipelineStep {
                 { context: this._handle }
             );
         },
-        set: async (value: string): Promise<void> => {
-            await this._client.invokeCapability<void>(
-                'Aspire.Hosting.Pipelines/PipelineStep.setDescription',
-                { context: this._handle, value }
-            );
-        }
     };
 
-    /** Gets the DependsOnSteps property */
+    /** Gets or initializes the list of step names that this step depends on. */
     private _dependsOnSteps?: AspireList<string>;
     get dependsOnSteps(): AspireList<string> {
         if (!this._dependsOnSteps) {
@@ -1776,7 +1784,7 @@ export class PipelineStep {
         return this._dependsOnSteps;
     }
 
-    /** Gets the RequiredBySteps property */
+    /** Gets or initializes the list of step names that require this step to complete before they can finish. This is used internally during pipeline construction and is converted to DependsOn relationships. */
     private _requiredBySteps?: AspireList<string>;
     get requiredBySteps(): AspireList<string> {
         if (!this._requiredBySteps) {
@@ -1790,7 +1798,7 @@ export class PipelineStep {
         return this._requiredBySteps;
     }
 
-    /** Gets the Tags property */
+    /** Gets or initializes the list of tags that categorize this step. */
     private _tags?: AspireList<string>;
     get tags(): AspireList<string> {
         if (!this._tags) {
@@ -1804,7 +1812,7 @@ export class PipelineStep {
         return this._tags;
     }
 
-    /** Gets the Resource property */
+    /** Gets or initializes the resource that this step is associated with, if any. */
     resource = {
         get: async (): Promise<Resource> => {
             const handle = await this._client.invokeCapability<IResourceHandle>(
@@ -1885,7 +1893,7 @@ export class PipelineStepContext {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the PipelineContext property */
+    /** Gets the pipeline context shared across all steps. */
     pipelineContext = {
         get: async (): Promise<PipelineContext> => {
             const handle = await this._client.invokeCapability<PipelineContextHandle>(
@@ -1896,7 +1904,7 @@ export class PipelineStepContext {
         },
     };
 
-    /** Gets the ReportingStep property */
+    /** Gets the publishing step associated with this specific step execution. */
     reportingStep = {
         get: async (): Promise<ReportingStep> => {
             const handle = await this._client.invokeCapability<IReportingStepHandle>(
@@ -1907,7 +1915,7 @@ export class PipelineStepContext {
         },
     };
 
-    /** Gets the Model property */
+    /** Gets the distributed application model to be deployed. */
     model = {
         get: async (): Promise<DistributedApplicationModel> => {
             const handle = await this._client.invokeCapability<DistributedApplicationModelHandle>(
@@ -1918,7 +1926,7 @@ export class PipelineStepContext {
         },
     };
 
-    /** Gets the ExecutionContext property */
+    /** Gets the execution context for the distributed application. */
     executionContext = {
         get: async (): Promise<DistributedApplicationExecutionContext> => {
             const handle = await this._client.invokeCapability<DistributedApplicationExecutionContextHandle>(
@@ -1929,7 +1937,7 @@ export class PipelineStepContext {
         },
     };
 
-    /** Gets the Services property */
+    /** Gets the service provider for dependency resolution. */
     services = {
         get: async (): Promise<ServiceProvider> => {
             const handle = await this._client.invokeCapability<IServiceProviderHandle>(
@@ -1940,7 +1948,7 @@ export class PipelineStepContext {
         },
     };
 
-    /** Gets the Logger property */
+    /** Gets the logger for pipeline operations that writes to both the pipeline logger and the step logger. */
     logger = {
         get: async (): Promise<Logger> => {
             const handle = await this._client.invokeCapability<ILoggerHandle>(
@@ -1951,7 +1959,7 @@ export class PipelineStepContext {
         },
     };
 
-    /** Gets the CancellationToken property */
+    /** Gets the cancellation token for the pipeline operation. */
     cancellationToken = {
         get: async (): Promise<CancellationToken> => {
             const result = await this._client.invokeCapability<string | null>(
@@ -1962,7 +1970,7 @@ export class PipelineStepContext {
         },
     };
 
-    /** Gets the Summary property */
+    /** Gets the pipeline summary that steps can add information to. The summary will be displayed to users after pipeline execution completes. */
     summary = {
         get: async (): Promise<PipelineSummary> => {
             const handle = await this._client.invokeCapability<PipelineSummaryHandle>(
@@ -1988,7 +1996,7 @@ export class PipelineStepFactoryContext {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the PipelineContext property */
+    /** Gets the pipeline context that has the model and other properties. */
     pipelineContext = {
         get: async (): Promise<PipelineContext> => {
             const handle = await this._client.invokeCapability<PipelineContextHandle>(
@@ -1999,7 +2007,7 @@ export class PipelineStepFactoryContext {
         },
     };
 
-    /** Gets the Resource property */
+    /** Gets the resource that this factory is associated with. */
     resource = {
         get: async (): Promise<Resource> => {
             const handle = await this._client.invokeCapability<IResourceHandle>(
@@ -2025,7 +2033,7 @@ export class PipelineSummary {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Invokes the Add method */
+    /** Adds a key-value pair to the pipeline summary with a plain-text value. */
     /** @internal */
     async _addInternal(key: string, value: string): Promise<PipelineSummary> {
         const rpcArgs: Record<string, unknown> = { context: this._handle, key, value };
@@ -2070,7 +2078,7 @@ export class PipelineSummaryPromise implements PromiseLike<PipelineSummary> {
         return this._promise.then(onfulfilled, onrejected);
     }
 
-    /** Invokes the Add method */
+    /** Adds a key-value pair to the pipeline summary with a plain-text value. */
     add(key: string, value: string): PipelineSummaryPromise {
         return new PipelineSummaryPromise(this._promise.then(obj => obj.add(key, value)));
     }
@@ -2095,7 +2103,7 @@ export class ProjectResourceOptions {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the LaunchProfileName property */
+    /** The launch profile to use. If `null` then the default launch profile will be used. */
     launchProfileName = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -2111,7 +2119,7 @@ export class ProjectResourceOptions {
         }
     };
 
-    /** Gets the ExcludeLaunchProfile property */
+    /** If set, no launch profile will be used, and LaunchProfileName will be ignored. */
     excludeLaunchProfile = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -2127,7 +2135,7 @@ export class ProjectResourceOptions {
         }
     };
 
-    /** Gets the ExcludeKestrelEndpoints property */
+    /** If set, ignore endpoints coming from Kestrel configuration. */
     excludeKestrelEndpoints = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -2158,7 +2166,7 @@ export class ReferenceExpressionBuilder {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the IsEmpty property */
+    /** Indicates whether the expression is empty. */
     isEmpty = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -2521,7 +2529,7 @@ export class ResourceReadyEvent {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the Resource property */
+    /** The resource that is in a healthy state. */
     resource = {
         get: async (): Promise<Resource> => {
             const handle = await this._client.invokeCapability<IResourceHandle>(
@@ -2595,7 +2603,7 @@ export class ResourceUrlsCallbackContext {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the Resource property */
+    /** Gets the resource this the URLs are associated with. */
     resource = {
         get: async (): Promise<Resource> => {
             const handle = await this._client.invokeCapability<IResourceHandle>(
@@ -2606,7 +2614,7 @@ export class ResourceUrlsCallbackContext {
         },
     };
 
-    /** Gets the Urls property */
+    /** Gets the URLs associated with the callback context. */
     private _urls?: AspireList<ResourceUrlAnnotation>;
     get urls(): AspireList<ResourceUrlAnnotation> {
         if (!this._urls) {
@@ -2620,7 +2628,7 @@ export class ResourceUrlsCallbackContext {
         return this._urls;
     }
 
-    /** Gets the CancellationToken property */
+    /** Gets the `CancellationToken` associated with the callback context. */
     cancellationToken = {
         get: async (): Promise<CancellationToken> => {
             const result = await this._client.invokeCapability<string | null>(
@@ -2631,7 +2639,7 @@ export class ResourceUrlsCallbackContext {
         },
     };
 
-    /** Gets the Logger property */
+    /** A logger instance to use for logging. */
     logger = {
         get: async (): Promise<Logger> => {
             const handle = await this._client.invokeCapability<ILoggerHandle>(
@@ -2642,7 +2650,7 @@ export class ResourceUrlsCallbackContext {
         },
     };
 
-    /** Gets the ExecutionContext property */
+    /** Gets the execution context associated with this invocation of the AppHost. */
     executionContext = {
         get: async (): Promise<DistributedApplicationExecutionContext> => {
             const handle = await this._client.invokeCapability<DistributedApplicationExecutionContextHandle>(
@@ -2668,7 +2676,7 @@ export class UpdateCommandStateContext {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the ServiceProvider property */
+    /** The service provider. */
     serviceProvider = {
         get: async (): Promise<ServiceProvider> => {
             const handle = await this._client.invokeCapability<IServiceProviderHandle>(
@@ -2713,18 +2721,18 @@ export class Configuration {
     }
 
     /** Gets a configuration section by key */
-    async getSection(key: string): Promise<IConfigurationSectionHandle> {
+    async getSection(key: string): Promise<ConfigurationSection> {
         const rpcArgs: Record<string, unknown> = { configuration: this._handle, key };
-        return await this._client.invokeCapability<IConfigurationSectionHandle>(
+        return await this._client.invokeCapability<ConfigurationSection>(
             'Aspire.Hosting/getSection',
             rpcArgs
         );
     }
 
     /** Gets child configuration sections */
-    async getChildren(): Promise<IConfigurationSectionHandle[]> {
+    async getChildren(): Promise<ConfigurationSection[]> {
         const rpcArgs: Record<string, unknown> = { configuration: this._handle };
-        return await this._client.invokeCapability<IConfigurationSectionHandle[]>(
+        return await this._client.invokeCapability<ConfigurationSection[]>(
             'Aspire.Hosting/getChildren',
             rpcArgs
         );
@@ -2765,12 +2773,12 @@ export class ConfigurationPromise implements PromiseLike<Configuration> {
     }
 
     /** Gets a configuration section by key */
-    getSection(key: string): Promise<IConfigurationSectionHandle> {
+    getSection(key: string): Promise<ConfigurationSection> {
         return this._promise.then(obj => obj.getSection(key));
     }
 
     /** Gets child configuration sections */
-    getChildren(): Promise<IConfigurationSectionHandle[]> {
+    getChildren(): Promise<ConfigurationSection[]> {
         return this._promise.then(obj => obj.getChildren());
     }
 
@@ -2778,6 +2786,57 @@ export class ConfigurationPromise implements PromiseLike<Configuration> {
     exists(key: string): Promise<boolean> {
         return this._promise.then(obj => obj.exists(key));
     }
+
+}
+
+// ============================================================================
+// ConfigurationSection
+// ============================================================================
+
+/**
+ * Type class for ConfigurationSection.
+ */
+export class ConfigurationSection {
+    constructor(private _handle: IConfigurationSectionHandle, private _client: AspireClientRpc) {}
+
+    /** Serialize for JSON-RPC transport */
+    toJSON(): MarshalledHandle { return this._handle.toJSON(); }
+
+    /** Gets the Key property */
+    key = {
+        get: async (): Promise<string> => {
+            return await this._client.invokeCapability<string>(
+                'Microsoft.Extensions.Configuration/IConfigurationSection.key',
+                { context: this._handle }
+            );
+        },
+    };
+
+    /** Gets the Path property */
+    path = {
+        get: async (): Promise<string> => {
+            return await this._client.invokeCapability<string>(
+                'Microsoft.Extensions.Configuration/IConfigurationSection.path',
+                { context: this._handle }
+            );
+        },
+    };
+
+    /** Gets the Value property */
+    value = {
+        get: async (): Promise<string> => {
+            return await this._client.invokeCapability<string>(
+                'Microsoft.Extensions.Configuration/IConfigurationSection.value',
+                { context: this._handle }
+            );
+        },
+        set: async (value: string): Promise<void> => {
+            await this._client.invokeCapability<void>(
+                'Microsoft.Extensions.Configuration/IConfigurationSection.setValue',
+                { context: this._handle, value }
+            );
+        }
+    };
 
 }
 
@@ -2794,7 +2853,7 @@ export class DistributedApplicationBuilder {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the AppHostDirectory property */
+    /** Directory of the project where the app host is located. Defaults to the content root if there's no project. */
     appHostDirectory = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -2815,7 +2874,7 @@ export class DistributedApplicationBuilder {
         },
     };
 
-    /** Gets the Eventing property */
+    /** Eventing infrastructure for AppHost lifecycle. */
     eventing = {
         get: async (): Promise<DistributedApplicationEventing> => {
             const handle = await this._client.invokeCapability<IDistributedApplicationEventingHandle>(
@@ -2826,7 +2885,7 @@ export class DistributedApplicationBuilder {
         },
     };
 
-    /** Gets the ExecutionContext property */
+    /** Execution context for this invocation of the AppHost. */
     executionContext = {
         get: async (): Promise<DistributedApplicationExecutionContext> => {
             const handle = await this._client.invokeCapability<DistributedApplicationExecutionContextHandle>(
@@ -2837,7 +2896,7 @@ export class DistributedApplicationBuilder {
         },
     };
 
-    /** Gets the UserSecretsManager property */
+    /** Gets the service for managing user secrets. */
     userSecretsManager = {
         get: async (): Promise<UserSecretsManager> => {
             const handle = await this._client.invokeCapability<IUserSecretsManagerHandle>(
@@ -3307,6 +3366,27 @@ export class DistributedApplicationBuilder {
         return new ViteAppResourcePromise(this._addViteAppInternal(name, appDirectory, runScriptName));
     }
 
+    /** Adds a MongoDB container resource */
+    /** @internal */
+    async _addMongoDBInternal(name: string, port?: number, userName?: ParameterResource, password?: ParameterResource): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name };
+        if (port !== undefined) rpcArgs.port = port;
+        if (userName !== undefined) rpcArgs.userName = userName;
+        if (password !== undefined) rpcArgs.password = password;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting.MongoDB/addMongoDB',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    addMongoDB(name: string, options?: AddMongoDBOptions): MongoDBServerResourcePromise {
+        const port = options?.port;
+        const userName = options?.userName;
+        const password = options?.password;
+        return new MongoDBServerResourcePromise(this._addMongoDBInternal(name, port, userName, password));
+    }
+
 }
 
 /**
@@ -3462,6 +3542,11 @@ export class DistributedApplicationBuilderPromise implements PromiseLike<Distrib
         return new ViteAppResourcePromise(this._promise.then(obj => obj.addViteApp(name, appDirectory, options)));
     }
 
+    /** Adds a MongoDB container resource */
+    addMongoDB(name: string, options?: AddMongoDBOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.addMongoDB(name, options)));
+    }
+
 }
 
 // ============================================================================
@@ -3477,7 +3562,7 @@ export class DistributedApplicationEventing {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Invokes the Unsubscribe method */
+    /** Unsubscribe from an event. */
     /** @internal */
     async _unsubscribeInternal(subscription: DistributedApplicationEventSubscriptionHandle): Promise<DistributedApplicationEventing> {
         const rpcArgs: Record<string, unknown> = { context: this._handle, subscription };
@@ -3507,7 +3592,7 @@ export class DistributedApplicationEventingPromise implements PromiseLike<Distri
         return this._promise.then(onfulfilled, onrejected);
     }
 
-    /** Invokes the Unsubscribe method */
+    /** Unsubscribe from an event. */
     unsubscribe(subscription: DistributedApplicationEventSubscriptionHandle): DistributedApplicationEventingPromise {
         return new DistributedApplicationEventingPromise(this._promise.then(obj => obj.unsubscribe(subscription)));
     }
@@ -3526,6 +3611,54 @@ export class HostEnvironment {
 
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
+
+    /** Gets the EnvironmentName property */
+    environmentName = {
+        get: async (): Promise<string> => {
+            return await this._client.invokeCapability<string>(
+                'Microsoft.Extensions.Hosting/IHostEnvironment.environmentName',
+                { context: this._handle }
+            );
+        },
+        set: async (value: string): Promise<void> => {
+            await this._client.invokeCapability<void>(
+                'Microsoft.Extensions.Hosting/IHostEnvironment.setEnvironmentName',
+                { context: this._handle, value }
+            );
+        }
+    };
+
+    /** Gets the ApplicationName property */
+    applicationName = {
+        get: async (): Promise<string> => {
+            return await this._client.invokeCapability<string>(
+                'Microsoft.Extensions.Hosting/IHostEnvironment.applicationName',
+                { context: this._handle }
+            );
+        },
+        set: async (value: string): Promise<void> => {
+            await this._client.invokeCapability<void>(
+                'Microsoft.Extensions.Hosting/IHostEnvironment.setApplicationName',
+                { context: this._handle, value }
+            );
+        }
+    };
+
+    /** Gets the ContentRootPath property */
+    contentRootPath = {
+        get: async (): Promise<string> => {
+            return await this._client.invokeCapability<string>(
+                'Microsoft.Extensions.Hosting/IHostEnvironment.contentRootPath',
+                { context: this._handle }
+            );
+        },
+        set: async (value: string): Promise<void> => {
+            await this._client.invokeCapability<void>(
+                'Microsoft.Extensions.Hosting/IHostEnvironment.setContentRootPath',
+                { context: this._handle, value }
+            );
+        }
+    };
 
     /** Checks if running in Development environment */
     async isDevelopment(): Promise<boolean> {
@@ -4229,7 +4362,7 @@ export class UserSecretsManager {
     /** Serialize for JSON-RPC transport */
     toJSON(): MarshalledHandle { return this._handle.toJSON(); }
 
-    /** Gets the IsAvailable property */
+    /** Gets a value indicating whether user secrets are available. */
     isAvailable = {
         get: async (): Promise<boolean> => {
             return await this._client.invokeCapability<boolean>(
@@ -4239,7 +4372,7 @@ export class UserSecretsManager {
         },
     };
 
-    /** Gets the FilePath property */
+    /** Gets the path to the user secrets file. */
     filePath = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -12813,7 +12946,7 @@ export class JavaScriptAppResource extends ResourceBuilderBase<JavaScriptAppReso
         super(handle, client);
     }
 
-    /** Gets the Command property */
+    /** Gets the command associated with this executable resource. */
     command = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -12823,7 +12956,7 @@ export class JavaScriptAppResource extends ResourceBuilderBase<JavaScriptAppReso
         },
     };
 
-    /** Gets the WorkingDirectory property */
+    /** Gets the working directory for the executable resource. */
     workingDirectory = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -12833,7 +12966,7 @@ export class JavaScriptAppResource extends ResourceBuilderBase<JavaScriptAppReso
         },
     };
 
-    /** Gets the Name property */
+    /** Gets the name of the resource. */
     name = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -14551,6 +14684,4743 @@ export class JavaScriptAppResourcePromise implements PromiseLike<JavaScriptAppRe
 }
 
 // ============================================================================
+// MongoDBDatabaseResource
+// ============================================================================
+
+export class MongoDBDatabaseResource extends ResourceBuilderBase<MongoDBDatabaseResourceHandle> {
+    constructor(handle: MongoDBDatabaseResourceHandle, client: AspireClientRpc) {
+        super(handle, client);
+    }
+
+    /** Gets the connection string expression for the MongoDB database. */
+    connectionStringExpression = {
+        get: async (): Promise<ReferenceExpression> => {
+            return await this._client.invokeCapability<ReferenceExpression>(
+                'Aspire.Hosting.ApplicationModel/MongoDBDatabaseResource.connectionStringExpression',
+                { context: this._handle }
+            );
+        },
+    };
+
+    /** Gets the connection URI expression for the MongoDB database. */
+    uriExpression = {
+        get: async (): Promise<ReferenceExpression> => {
+            return await this._client.invokeCapability<ReferenceExpression>(
+                'Aspire.Hosting.ApplicationModel/MongoDBDatabaseResource.uriExpression',
+                { context: this._handle }
+            );
+        },
+    };
+
+    /** Gets the parent MongoDB container resource. */
+    parent = {
+        get: async (): Promise<MongoDBServerResource> => {
+            const handle = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+                'Aspire.Hosting.ApplicationModel/MongoDBDatabaseResource.parent',
+                { context: this._handle }
+            );
+            return new MongoDBServerResource(handle, this._client);
+        },
+    };
+
+    /** Gets the database name. */
+    databaseName = {
+        get: async (): Promise<string> => {
+            return await this._client.invokeCapability<string>(
+                'Aspire.Hosting.ApplicationModel/MongoDBDatabaseResource.databaseName',
+                { context: this._handle }
+            );
+        },
+    };
+
+    /** Gets the name of the resource. */
+    name = {
+        get: async (): Promise<string> => {
+            return await this._client.invokeCapability<string>(
+                'Aspire.Hosting.ApplicationModel/MongoDBDatabaseResource.name',
+                { context: this._handle }
+            );
+        },
+    };
+
+    /** @internal */
+    private async _withContainerRegistryInternal(registry: ResourceBuilderBase): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, registry };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withContainerRegistry',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Configures a resource to use a container registry */
+    withContainerRegistry(registry: ResourceBuilderBase): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withContainerRegistryInternal(registry));
+    }
+
+    /** @internal */
+    private async _withDockerfileBaseImageInternal(buildImage?: string, runtimeImage?: string): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (buildImage !== undefined) rpcArgs.buildImage = buildImage;
+        if (runtimeImage !== undefined) rpcArgs.runtimeImage = runtimeImage;
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withDockerfileBaseImage',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Sets the base image for a Dockerfile build */
+    withDockerfileBaseImage(options?: WithDockerfileBaseImageOptions): MongoDBDatabaseResourcePromise {
+        const buildImage = options?.buildImage;
+        const runtimeImage = options?.runtimeImage;
+        return new MongoDBDatabaseResourcePromise(this._withDockerfileBaseImageInternal(buildImage, runtimeImage));
+    }
+
+    /** @internal */
+    private async _withRequiredCommandInternal(command: string, helpLink?: string): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, command };
+        if (helpLink !== undefined) rpcArgs.helpLink = helpLink;
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withRequiredCommand',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Adds a required command dependency */
+    withRequiredCommand(command: string, options?: WithRequiredCommandOptions): MongoDBDatabaseResourcePromise {
+        const helpLink = options?.helpLink;
+        return new MongoDBDatabaseResourcePromise(this._withRequiredCommandInternal(command, helpLink));
+    }
+
+    /** @internal */
+    private async _withConnectionPropertyInternal(name: string, value: string | ReferenceExpression): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, value };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withConnectionProperty',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Adds a connection property with a string or reference expression value */
+    withConnectionProperty(name: string, value: string | ReferenceExpression): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withConnectionPropertyInternal(name, value));
+    }
+
+    /** @internal */
+    private async _withConnectionPropertyValueInternal(name: string, value: string): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, value };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withConnectionPropertyValue',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Adds a connection property with a string value */
+    withConnectionPropertyValue(name: string, value: string): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withConnectionPropertyValueInternal(name, value));
+    }
+
+    /** Gets a connection property by key */
+    async getConnectionProperty(key: string): Promise<ReferenceExpression> {
+        const rpcArgs: Record<string, unknown> = { resource: this._handle, key };
+        return await this._client.invokeCapability<ReferenceExpression>(
+            'Aspire.Hosting/getConnectionProperty',
+            rpcArgs
+        );
+    }
+
+    /** @internal */
+    private async _withUrlsCallbackInternal(callback: (obj: ResourceUrlsCallbackContext) => Promise<void>): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const objHandle = wrapIfHandle(objData) as ResourceUrlsCallbackContextHandle;
+            const obj = new ResourceUrlsCallbackContext(objHandle, this._client);
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withUrlsCallback',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Customizes displayed URLs via callback */
+    withUrlsCallback(callback: (obj: ResourceUrlsCallbackContext) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withUrlsCallbackInternal(callback));
+    }
+
+    /** @internal */
+    private async _withUrlsCallbackAsyncInternal(callback: (arg: ResourceUrlsCallbackContext) => Promise<void>): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceUrlsCallbackContextHandle;
+            const arg = new ResourceUrlsCallbackContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withUrlsCallbackAsync',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Customizes displayed URLs via async callback */
+    withUrlsCallbackAsync(callback: (arg: ResourceUrlsCallbackContext) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withUrlsCallbackAsyncInternal(callback));
+    }
+
+    /** @internal */
+    private async _withUrlInternal(url: string, displayText?: string): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, url };
+        if (displayText !== undefined) rpcArgs.displayText = displayText;
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withUrl',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Adds or modifies displayed URLs */
+    withUrl(url: string, options?: WithUrlOptions): MongoDBDatabaseResourcePromise {
+        const displayText = options?.displayText;
+        return new MongoDBDatabaseResourcePromise(this._withUrlInternal(url, displayText));
+    }
+
+    /** @internal */
+    private async _withUrlExpressionInternal(url: ReferenceExpression, displayText?: string): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, url };
+        if (displayText !== undefined) rpcArgs.displayText = displayText;
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withUrlExpression',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Adds a URL using a reference expression */
+    withUrlExpression(url: ReferenceExpression, options?: WithUrlExpressionOptions): MongoDBDatabaseResourcePromise {
+        const displayText = options?.displayText;
+        return new MongoDBDatabaseResourcePromise(this._withUrlExpressionInternal(url, displayText));
+    }
+
+    /** @internal */
+    private async _withUrlForEndpointInternal(endpointName: string, callback: (obj: ResourceUrlAnnotation) => Promise<void>): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const obj = wrapIfHandle(objData) as ResourceUrlAnnotation;
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, endpointName, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withUrlForEndpoint',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Customizes the URL for a specific endpoint via callback */
+    withUrlForEndpoint(endpointName: string, callback: (obj: ResourceUrlAnnotation) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withUrlForEndpointInternal(endpointName, callback));
+    }
+
+    /** @internal */
+    private async _excludeFromManifestInternal(): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/excludeFromManifest',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Excludes the resource from the deployment manifest */
+    excludeFromManifest(): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._excludeFromManifestInternal());
+    }
+
+    /** @internal */
+    private async _withExplicitStartInternal(): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withExplicitStart',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Prevents resource from starting automatically */
+    withExplicitStart(): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withExplicitStartInternal());
+    }
+
+    /** @internal */
+    private async _withHealthCheckInternal(key: string): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, key };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withHealthCheck',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Adds a health check by key */
+    withHealthCheck(key: string): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withHealthCheckInternal(key));
+    }
+
+    /** @internal */
+    private async _withCommandInternal(name: string, displayName: string, executeCommand: (arg: ExecuteCommandContext) => Promise<ExecuteCommandResult>, commandOptions?: CommandOptions): Promise<MongoDBDatabaseResource> {
+        const executeCommandId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ExecuteCommandContextHandle;
+            const arg = new ExecuteCommandContext(argHandle, this._client);
+            return await executeCommand(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, displayName, executeCommand: executeCommandId };
+        if (commandOptions !== undefined) rpcArgs.commandOptions = commandOptions;
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withCommand',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Adds a resource command */
+    withCommand(name: string, displayName: string, executeCommand: (arg: ExecuteCommandContext) => Promise<ExecuteCommandResult>, options?: WithCommandOptions): MongoDBDatabaseResourcePromise {
+        const commandOptions = options?.commandOptions;
+        return new MongoDBDatabaseResourcePromise(this._withCommandInternal(name, displayName, executeCommand, commandOptions));
+    }
+
+    /** @internal */
+    private async _withRelationshipInternal(resourceBuilder: ResourceBuilderBase, type: string): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, resourceBuilder, type };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withBuilderRelationship',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Adds a relationship to another resource */
+    withRelationship(resourceBuilder: ResourceBuilderBase, type: string): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withRelationshipInternal(resourceBuilder, type));
+    }
+
+    /** @internal */
+    private async _withParentRelationshipInternal(parent: ResourceBuilderBase): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, parent };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withBuilderParentRelationship',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Sets the parent relationship */
+    withParentRelationship(parent: ResourceBuilderBase): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withParentRelationshipInternal(parent));
+    }
+
+    /** @internal */
+    private async _withChildRelationshipInternal(child: ResourceBuilderBase): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, child };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withBuilderChildRelationship',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Sets a child relationship */
+    withChildRelationship(child: ResourceBuilderBase): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withChildRelationshipInternal(child));
+    }
+
+    /** @internal */
+    private async _withIconNameInternal(iconName: string, iconVariant?: IconVariant): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, iconName };
+        if (iconVariant !== undefined) rpcArgs.iconVariant = iconVariant;
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withIconName',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Sets the icon for the resource */
+    withIconName(iconName: string, options?: WithIconNameOptions): MongoDBDatabaseResourcePromise {
+        const iconVariant = options?.iconVariant;
+        return new MongoDBDatabaseResourcePromise(this._withIconNameInternal(iconName, iconVariant));
+    }
+
+    /** @internal */
+    private async _excludeFromMcpInternal(): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/excludeFromMcp',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Excludes the resource from MCP server exposure */
+    excludeFromMcp(): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._excludeFromMcpInternal());
+    }
+
+    /** @internal */
+    private async _withPipelineStepFactoryInternal(stepName: string, callback: (arg: PipelineStepContext) => Promise<void>, dependsOn?: string[], requiredBy?: string[], tags?: string[], description?: string): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as PipelineStepContextHandle;
+            const arg = new PipelineStepContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, stepName, callback: callbackId };
+        if (dependsOn !== undefined) rpcArgs.dependsOn = dependsOn;
+        if (requiredBy !== undefined) rpcArgs.requiredBy = requiredBy;
+        if (tags !== undefined) rpcArgs.tags = tags;
+        if (description !== undefined) rpcArgs.description = description;
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withPipelineStepFactory',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Adds a pipeline step to the resource */
+    withPipelineStepFactory(stepName: string, callback: (arg: PipelineStepContext) => Promise<void>, options?: WithPipelineStepFactoryOptions): MongoDBDatabaseResourcePromise {
+        const dependsOn = options?.dependsOn;
+        const requiredBy = options?.requiredBy;
+        const tags = options?.tags;
+        const description = options?.description;
+        return new MongoDBDatabaseResourcePromise(this._withPipelineStepFactoryInternal(stepName, callback, dependsOn, requiredBy, tags, description));
+    }
+
+    /** @internal */
+    private async _withPipelineConfigurationAsyncInternal(callback: (arg: PipelineConfigurationContext) => Promise<void>): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as PipelineConfigurationContextHandle;
+            const arg = new PipelineConfigurationContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withPipelineConfigurationAsync',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Configures pipeline step dependencies via an async callback */
+    withPipelineConfigurationAsync(callback: (arg: PipelineConfigurationContext) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withPipelineConfigurationAsyncInternal(callback));
+    }
+
+    /** @internal */
+    private async _withPipelineConfigurationInternal(callback: (obj: PipelineConfigurationContext) => Promise<void>): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const objHandle = wrapIfHandle(objData) as PipelineConfigurationContextHandle;
+            const obj = new PipelineConfigurationContext(objHandle, this._client);
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/withPipelineConfiguration',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Configures pipeline step dependencies via a callback */
+    withPipelineConfiguration(callback: (obj: PipelineConfigurationContext) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._withPipelineConfigurationInternal(callback));
+    }
+
+    /** Gets the resource name */
+    async getResourceName(): Promise<string> {
+        const rpcArgs: Record<string, unknown> = { resource: this._handle };
+        return await this._client.invokeCapability<string>(
+            'Aspire.Hosting/getResourceName',
+            rpcArgs
+        );
+    }
+
+    /** @internal */
+    private async _onBeforeResourceStartedInternal(callback: (arg: BeforeResourceStartedEvent) => Promise<void>): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as BeforeResourceStartedEventHandle;
+            const arg = new BeforeResourceStartedEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/onBeforeResourceStarted',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Subscribes to the BeforeResourceStarted event */
+    onBeforeResourceStarted(callback: (arg: BeforeResourceStartedEvent) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._onBeforeResourceStartedInternal(callback));
+    }
+
+    /** @internal */
+    private async _onResourceStoppedInternal(callback: (arg: ResourceStoppedEvent) => Promise<void>): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceStoppedEventHandle;
+            const arg = new ResourceStoppedEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/onResourceStopped',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Subscribes to the ResourceStopped event */
+    onResourceStopped(callback: (arg: ResourceStoppedEvent) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._onResourceStoppedInternal(callback));
+    }
+
+    /** @internal */
+    private async _onConnectionStringAvailableInternal(callback: (arg: ConnectionStringAvailableEvent) => Promise<void>): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ConnectionStringAvailableEventHandle;
+            const arg = new ConnectionStringAvailableEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/onConnectionStringAvailable',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Subscribes to the ConnectionStringAvailable event */
+    onConnectionStringAvailable(callback: (arg: ConnectionStringAvailableEvent) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._onConnectionStringAvailableInternal(callback));
+    }
+
+    /** @internal */
+    private async _onInitializeResourceInternal(callback: (arg: InitializeResourceEvent) => Promise<void>): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as InitializeResourceEventHandle;
+            const arg = new InitializeResourceEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/onInitializeResource',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Subscribes to the InitializeResource event */
+    onInitializeResource(callback: (arg: InitializeResourceEvent) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._onInitializeResourceInternal(callback));
+    }
+
+    /** @internal */
+    private async _onResourceReadyInternal(callback: (arg: ResourceReadyEvent) => Promise<void>): Promise<MongoDBDatabaseResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceReadyEventHandle;
+            const arg = new ResourceReadyEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting/onResourceReady',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Subscribes to the ResourceReady event */
+    onResourceReady(callback: (arg: ResourceReadyEvent) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._onResourceReadyInternal(callback));
+    }
+
+}
+
+/**
+ * Thenable wrapper for MongoDBDatabaseResource that enables fluent chaining.
+ * @example
+ * await builder.addSomething().withX().withY();
+ */
+export class MongoDBDatabaseResourcePromise implements PromiseLike<MongoDBDatabaseResource> {
+    constructor(private _promise: Promise<MongoDBDatabaseResource>) {}
+
+    then<TResult1 = MongoDBDatabaseResource, TResult2 = never>(
+        onfulfilled?: ((value: MongoDBDatabaseResource) => TResult1 | PromiseLike<TResult1>) | null,
+        onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+    ): PromiseLike<TResult1 | TResult2> {
+        return this._promise.then(onfulfilled, onrejected);
+    }
+
+    /** Configures a resource to use a container registry */
+    withContainerRegistry(registry: ResourceBuilderBase): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withContainerRegistry(registry)));
+    }
+
+    /** Sets the base image for a Dockerfile build */
+    withDockerfileBaseImage(options?: WithDockerfileBaseImageOptions): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withDockerfileBaseImage(options)));
+    }
+
+    /** Adds a required command dependency */
+    withRequiredCommand(command: string, options?: WithRequiredCommandOptions): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withRequiredCommand(command, options)));
+    }
+
+    /** Adds a connection property with a string or reference expression value */
+    withConnectionProperty(name: string, value: string | ReferenceExpression): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withConnectionProperty(name, value)));
+    }
+
+    /** Adds a connection property with a string value */
+    withConnectionPropertyValue(name: string, value: string): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withConnectionPropertyValue(name, value)));
+    }
+
+    /** Gets a connection property by key */
+    getConnectionProperty(key: string): Promise<ReferenceExpression> {
+        return this._promise.then(obj => obj.getConnectionProperty(key));
+    }
+
+    /** Customizes displayed URLs via callback */
+    withUrlsCallback(callback: (obj: ResourceUrlsCallbackContext) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withUrlsCallback(callback)));
+    }
+
+    /** Customizes displayed URLs via async callback */
+    withUrlsCallbackAsync(callback: (arg: ResourceUrlsCallbackContext) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withUrlsCallbackAsync(callback)));
+    }
+
+    /** Adds or modifies displayed URLs */
+    withUrl(url: string, options?: WithUrlOptions): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withUrl(url, options)));
+    }
+
+    /** Adds a URL using a reference expression */
+    withUrlExpression(url: ReferenceExpression, options?: WithUrlExpressionOptions): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withUrlExpression(url, options)));
+    }
+
+    /** Customizes the URL for a specific endpoint via callback */
+    withUrlForEndpoint(endpointName: string, callback: (obj: ResourceUrlAnnotation) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withUrlForEndpoint(endpointName, callback)));
+    }
+
+    /** Excludes the resource from the deployment manifest */
+    excludeFromManifest(): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.excludeFromManifest()));
+    }
+
+    /** Prevents resource from starting automatically */
+    withExplicitStart(): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withExplicitStart()));
+    }
+
+    /** Adds a health check by key */
+    withHealthCheck(key: string): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withHealthCheck(key)));
+    }
+
+    /** Adds a resource command */
+    withCommand(name: string, displayName: string, executeCommand: (arg: ExecuteCommandContext) => Promise<ExecuteCommandResult>, options?: WithCommandOptions): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withCommand(name, displayName, executeCommand, options)));
+    }
+
+    /** Adds a relationship to another resource */
+    withRelationship(resourceBuilder: ResourceBuilderBase, type: string): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withRelationship(resourceBuilder, type)));
+    }
+
+    /** Sets the parent relationship */
+    withParentRelationship(parent: ResourceBuilderBase): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withParentRelationship(parent)));
+    }
+
+    /** Sets a child relationship */
+    withChildRelationship(child: ResourceBuilderBase): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withChildRelationship(child)));
+    }
+
+    /** Sets the icon for the resource */
+    withIconName(iconName: string, options?: WithIconNameOptions): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withIconName(iconName, options)));
+    }
+
+    /** Excludes the resource from MCP server exposure */
+    excludeFromMcp(): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.excludeFromMcp()));
+    }
+
+    /** Adds a pipeline step to the resource */
+    withPipelineStepFactory(stepName: string, callback: (arg: PipelineStepContext) => Promise<void>, options?: WithPipelineStepFactoryOptions): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withPipelineStepFactory(stepName, callback, options)));
+    }
+
+    /** Configures pipeline step dependencies via an async callback */
+    withPipelineConfigurationAsync(callback: (arg: PipelineConfigurationContext) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withPipelineConfigurationAsync(callback)));
+    }
+
+    /** Configures pipeline step dependencies via a callback */
+    withPipelineConfiguration(callback: (obj: PipelineConfigurationContext) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.withPipelineConfiguration(callback)));
+    }
+
+    /** Gets the resource name */
+    getResourceName(): Promise<string> {
+        return this._promise.then(obj => obj.getResourceName());
+    }
+
+    /** Subscribes to the BeforeResourceStarted event */
+    onBeforeResourceStarted(callback: (arg: BeforeResourceStartedEvent) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.onBeforeResourceStarted(callback)));
+    }
+
+    /** Subscribes to the ResourceStopped event */
+    onResourceStopped(callback: (arg: ResourceStoppedEvent) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.onResourceStopped(callback)));
+    }
+
+    /** Subscribes to the ConnectionStringAvailable event */
+    onConnectionStringAvailable(callback: (arg: ConnectionStringAvailableEvent) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.onConnectionStringAvailable(callback)));
+    }
+
+    /** Subscribes to the InitializeResource event */
+    onInitializeResource(callback: (arg: InitializeResourceEvent) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.onInitializeResource(callback)));
+    }
+
+    /** Subscribes to the ResourceReady event */
+    onResourceReady(callback: (arg: ResourceReadyEvent) => Promise<void>): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.onResourceReady(callback)));
+    }
+
+}
+
+// ============================================================================
+// MongoDBServerResource
+// ============================================================================
+
+export class MongoDBServerResource extends ResourceBuilderBase<MongoDBServerResourceHandle> {
+    constructor(handle: MongoDBServerResourceHandle, client: AspireClientRpc) {
+        super(handle, client);
+    }
+
+    /** Gets the primary endpoint for the MongoDB server. */
+    primaryEndpoint = {
+        get: async (): Promise<EndpointReference> => {
+            const handle = await this._client.invokeCapability<EndpointReferenceHandle>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.primaryEndpoint',
+                { context: this._handle }
+            );
+            return new EndpointReference(handle, this._client);
+        },
+    };
+
+    /** Gets the host endpoint reference for this resource. */
+    host = {
+        get: async (): Promise<EndpointReferenceExpression> => {
+            const handle = await this._client.invokeCapability<EndpointReferenceExpressionHandle>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.host',
+                { context: this._handle }
+            );
+            return new EndpointReferenceExpression(handle, this._client);
+        },
+    };
+
+    /** Gets the port endpoint reference for this resource. */
+    port = {
+        get: async (): Promise<EndpointReferenceExpression> => {
+            const handle = await this._client.invokeCapability<EndpointReferenceExpressionHandle>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.port',
+                { context: this._handle }
+            );
+            return new EndpointReferenceExpression(handle, this._client);
+        },
+    };
+
+    /** Gets the parameter that contains the MongoDb server password. */
+    passwordParameter = {
+        get: async (): Promise<ParameterResource> => {
+            const handle = await this._client.invokeCapability<ParameterResourceHandle>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.passwordParameter',
+                { context: this._handle }
+            );
+            return new ParameterResource(handle, this._client);
+        },
+    };
+
+    /** Gets the parameter that contains the MongoDb server username. */
+    userNameParameter = {
+        get: async (): Promise<ParameterResource> => {
+            const handle = await this._client.invokeCapability<ParameterResourceHandle>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.userNameParameter',
+                { context: this._handle }
+            );
+            return new ParameterResource(handle, this._client);
+        },
+    };
+
+    /** Gets a reference to the user name for the MongoDB server. */
+    userNameReference = {
+        get: async (): Promise<ReferenceExpression> => {
+            return await this._client.invokeCapability<ReferenceExpression>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.userNameReference',
+                { context: this._handle }
+            );
+        },
+    };
+
+    /** Gets the connection string for the MongoDB server. */
+    connectionStringExpression = {
+        get: async (): Promise<ReferenceExpression> => {
+            return await this._client.invokeCapability<ReferenceExpression>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.connectionStringExpression',
+                { context: this._handle }
+            );
+        },
+    };
+
+    /** Gets the connection URI expression for the MongoDB server. */
+    uriExpression = {
+        get: async (): Promise<ReferenceExpression> => {
+            return await this._client.invokeCapability<ReferenceExpression>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.uriExpression',
+                { context: this._handle }
+            );
+        },
+    };
+
+    /** A dictionary where the key is the resource name and the value is the database name. */
+    private _databases?: AspireDict<string, string>;
+    get databases(): AspireDict<string, string> {
+        if (!this._databases) {
+            this._databases = new AspireDict<string, string>(
+                this._handle,
+                this._client,
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.databases',
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.databases'
+            );
+        }
+        return this._databases;
+    }
+
+    /** The container Entrypoint. */
+    entrypoint = {
+        get: async (): Promise<string> => {
+            return await this._client.invokeCapability<string>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.entrypoint',
+                { context: this._handle }
+            );
+        },
+        set: async (value: string): Promise<void> => {
+            await this._client.invokeCapability<void>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.setEntrypoint',
+                { context: this._handle, value }
+            );
+        }
+    };
+
+    /** Should any custom arguments be wrapped in -c ">values<"? */
+    shellExecution = {
+        get: async (): Promise<boolean> => {
+            return await this._client.invokeCapability<boolean>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.shellExecution',
+                { context: this._handle }
+            );
+        },
+        set: async (value: boolean): Promise<void> => {
+            await this._client.invokeCapability<void>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.setShellExecution',
+                { context: this._handle, value }
+            );
+        }
+    };
+
+    /** Gets the name of the resource. */
+    name = {
+        get: async (): Promise<string> => {
+            return await this._client.invokeCapability<string>(
+                'Aspire.Hosting.ApplicationModel/MongoDBServerResource.name',
+                { context: this._handle }
+            );
+        },
+    };
+
+    /** @internal */
+    private async _withContainerRegistryInternal(registry: ResourceBuilderBase): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, registry };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withContainerRegistry',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures a resource to use a container registry */
+    withContainerRegistry(registry: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withContainerRegistryInternal(registry));
+    }
+
+    /** @internal */
+    private async _withBindMountInternal(source: string, target: string, isReadOnly?: boolean): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, source, target };
+        if (isReadOnly !== undefined) rpcArgs.isReadOnly = isReadOnly;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withBindMount',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a bind mount */
+    withBindMount(source: string, target: string, options?: WithBindMountOptions): MongoDBServerResourcePromise {
+        const isReadOnly = options?.isReadOnly;
+        return new MongoDBServerResourcePromise(this._withBindMountInternal(source, target, isReadOnly));
+    }
+
+    /** @internal */
+    private async _withEntrypointInternal(entrypoint: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, entrypoint };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withEntrypoint',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the container entrypoint */
+    withEntrypoint(entrypoint: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withEntrypointInternal(entrypoint));
+    }
+
+    /** @internal */
+    private async _withImageTagInternal(tag: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, tag };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withImageTag',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the container image tag */
+    withImageTag(tag: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withImageTagInternal(tag));
+    }
+
+    /** @internal */
+    private async _withImageRegistryInternal(registry: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, registry };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withImageRegistry',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the container image registry */
+    withImageRegistry(registry: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withImageRegistryInternal(registry));
+    }
+
+    /** @internal */
+    private async _withImageInternal(image: string, tag?: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, image };
+        if (tag !== undefined) rpcArgs.tag = tag;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withImage',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the container image */
+    withImage(image: string, options?: WithImageOptions): MongoDBServerResourcePromise {
+        const tag = options?.tag;
+        return new MongoDBServerResourcePromise(this._withImageInternal(image, tag));
+    }
+
+    /** @internal */
+    private async _withImageSHA256Internal(sha256: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, sha256 };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withImageSHA256',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the image SHA256 digest */
+    withImageSHA256(sha256: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withImageSHA256Internal(sha256));
+    }
+
+    /** @internal */
+    private async _withContainerRuntimeArgsInternal(args: string[]): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, args };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withContainerRuntimeArgs',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds runtime arguments for the container */
+    withContainerRuntimeArgs(args: string[]): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withContainerRuntimeArgsInternal(args));
+    }
+
+    /** @internal */
+    private async _withLifetimeInternal(lifetime: ContainerLifetime): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, lifetime };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withLifetime',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the lifetime behavior of the container resource */
+    withLifetime(lifetime: ContainerLifetime): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withLifetimeInternal(lifetime));
+    }
+
+    /** @internal */
+    private async _withImagePullPolicyInternal(pullPolicy: ImagePullPolicy): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, pullPolicy };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withImagePullPolicy',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the container image pull policy */
+    withImagePullPolicy(pullPolicy: ImagePullPolicy): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withImagePullPolicyInternal(pullPolicy));
+    }
+
+    /** @internal */
+    private async _publishAsContainerInternal(): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/publishAsContainer',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures the resource to be published as a container */
+    publishAsContainer(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._publishAsContainerInternal());
+    }
+
+    /** @internal */
+    private async _withDockerfileInternal(contextPath: string, dockerfilePath?: string, stage?: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, contextPath };
+        if (dockerfilePath !== undefined) rpcArgs.dockerfilePath = dockerfilePath;
+        if (stage !== undefined) rpcArgs.stage = stage;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withDockerfile',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures the resource to use a Dockerfile */
+    withDockerfile(contextPath: string, options?: WithDockerfileOptions): MongoDBServerResourcePromise {
+        const dockerfilePath = options?.dockerfilePath;
+        const stage = options?.stage;
+        return new MongoDBServerResourcePromise(this._withDockerfileInternal(contextPath, dockerfilePath, stage));
+    }
+
+    /** @internal */
+    private async _withContainerNameInternal(name: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withContainerName',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the container name */
+    withContainerName(name: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withContainerNameInternal(name));
+    }
+
+    /** @internal */
+    private async _withBuildArgInternal(name: string, value: string | ParameterResource): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, value };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withBuildArg',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a build argument from a string value or parameter resource */
+    withBuildArg(name: string, value: string | ParameterResource): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withBuildArgInternal(name, value));
+    }
+
+    /** @internal */
+    private async _withBuildSecretInternal(name: string, value: ParameterResource): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, value };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withParameterBuildSecret',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a build secret from a parameter resource */
+    withBuildSecret(name: string, value: ParameterResource): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withBuildSecretInternal(name, value));
+    }
+
+    /** @internal */
+    private async _withContainerCertificatePathsInternal(customCertificatesDestination?: string, defaultCertificateBundlePaths?: string[], defaultCertificateDirectoryPaths?: string[]): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (customCertificatesDestination !== undefined) rpcArgs.customCertificatesDestination = customCertificatesDestination;
+        if (defaultCertificateBundlePaths !== undefined) rpcArgs.defaultCertificateBundlePaths = defaultCertificateBundlePaths;
+        if (defaultCertificateDirectoryPaths !== undefined) rpcArgs.defaultCertificateDirectoryPaths = defaultCertificateDirectoryPaths;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withContainerCertificatePaths',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Overrides container certificate bundle and directory paths used for trust configuration */
+    withContainerCertificatePaths(options?: WithContainerCertificatePathsOptions): MongoDBServerResourcePromise {
+        const customCertificatesDestination = options?.customCertificatesDestination;
+        const defaultCertificateBundlePaths = options?.defaultCertificateBundlePaths;
+        const defaultCertificateDirectoryPaths = options?.defaultCertificateDirectoryPaths;
+        return new MongoDBServerResourcePromise(this._withContainerCertificatePathsInternal(customCertificatesDestination, defaultCertificateBundlePaths, defaultCertificateDirectoryPaths));
+    }
+
+    /** @internal */
+    private async _withEndpointProxySupportInternal(proxyEnabled: boolean): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, proxyEnabled };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withEndpointProxySupport',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures endpoint proxy support */
+    withEndpointProxySupport(proxyEnabled: boolean): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withEndpointProxySupportInternal(proxyEnabled));
+    }
+
+    /** @internal */
+    private async _withDockerfileBaseImageInternal(buildImage?: string, runtimeImage?: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (buildImage !== undefined) rpcArgs.buildImage = buildImage;
+        if (runtimeImage !== undefined) rpcArgs.runtimeImage = runtimeImage;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withDockerfileBaseImage',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the base image for a Dockerfile build */
+    withDockerfileBaseImage(options?: WithDockerfileBaseImageOptions): MongoDBServerResourcePromise {
+        const buildImage = options?.buildImage;
+        const runtimeImage = options?.runtimeImage;
+        return new MongoDBServerResourcePromise(this._withDockerfileBaseImageInternal(buildImage, runtimeImage));
+    }
+
+    /** @internal */
+    private async _withContainerNetworkAliasInternal(alias: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, alias };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withContainerNetworkAlias',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a network alias for the container */
+    withContainerNetworkAlias(alias: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withContainerNetworkAliasInternal(alias));
+    }
+
+    /** @internal */
+    private async _withMcpServerInternal(path?: string, endpointName?: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (path !== undefined) rpcArgs.path = path;
+        if (endpointName !== undefined) rpcArgs.endpointName = endpointName;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withMcpServer',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures an MCP server endpoint on the resource */
+    withMcpServer(options?: WithMcpServerOptions): MongoDBServerResourcePromise {
+        const path = options?.path;
+        const endpointName = options?.endpointName;
+        return new MongoDBServerResourcePromise(this._withMcpServerInternal(path, endpointName));
+    }
+
+    /** @internal */
+    private async _withOtlpExporterInternal(): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withOtlpExporter',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures OTLP telemetry export */
+    withOtlpExporter(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withOtlpExporterInternal());
+    }
+
+    /** @internal */
+    private async _withOtlpExporterProtocolInternal(protocol: OtlpProtocol): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, protocol };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withOtlpExporterProtocol',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures OTLP telemetry export with specific protocol */
+    withOtlpExporterProtocol(protocol: OtlpProtocol): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withOtlpExporterProtocolInternal(protocol));
+    }
+
+    /** @internal */
+    private async _publishAsConnectionStringInternal(): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/publishAsConnectionString',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Publishes the resource as a connection string */
+    publishAsConnectionString(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._publishAsConnectionStringInternal());
+    }
+
+    /** @internal */
+    private async _withRequiredCommandInternal(command: string, helpLink?: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, command };
+        if (helpLink !== undefined) rpcArgs.helpLink = helpLink;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withRequiredCommand',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a required command dependency */
+    withRequiredCommand(command: string, options?: WithRequiredCommandOptions): MongoDBServerResourcePromise {
+        const helpLink = options?.helpLink;
+        return new MongoDBServerResourcePromise(this._withRequiredCommandInternal(command, helpLink));
+    }
+
+    /** @internal */
+    private async _withEnvironmentCallbackInternal(callback: (arg: EnvironmentCallbackContext) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as EnvironmentCallbackContextHandle;
+            const arg = new EnvironmentCallbackContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withEnvironmentCallback',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets environment variables via callback */
+    withEnvironmentCallback(callback: (arg: EnvironmentCallbackContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withEnvironmentCallbackInternal(callback));
+    }
+
+    /** @internal */
+    private async _withEnvironmentEndpointInternal(name: string, endpointReference: EndpointReference): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, endpointReference };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withEnvironmentEndpoint',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets an environment variable from an endpoint reference */
+    withEnvironmentEndpoint(name: string, endpointReference: EndpointReference): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withEnvironmentEndpointInternal(name, endpointReference));
+    }
+
+    /** @internal */
+    private async _withEnvironmentInternal(name: string, value: string | ReferenceExpression | EndpointReference | ParameterResource | ResourceWithConnectionString): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, value };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withEnvironment',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets an environment variable on the resource */
+    withEnvironment(name: string, value: string | ReferenceExpression | EndpointReference | ParameterResource | ResourceWithConnectionString): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withEnvironmentInternal(name, value));
+    }
+
+    /** @internal */
+    private async _withEnvironmentParameterInternal(name: string, parameter: ParameterResource): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, parameter };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withEnvironmentParameter',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets an environment variable from a parameter resource */
+    withEnvironmentParameter(name: string, parameter: ParameterResource): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withEnvironmentParameterInternal(name, parameter));
+    }
+
+    /** @internal */
+    private async _withEnvironmentConnectionStringInternal(envVarName: string, resource: ResourceBuilderBase): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, envVarName, resource };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withEnvironmentConnectionString',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets an environment variable from a connection string resource */
+    withEnvironmentConnectionString(envVarName: string, resource: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withEnvironmentConnectionStringInternal(envVarName, resource));
+    }
+
+    /** @internal */
+    private async _withConnectionPropertyInternal(name: string, value: string | ReferenceExpression): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, value };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withConnectionProperty',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a connection property with a string or reference expression value */
+    withConnectionProperty(name: string, value: string | ReferenceExpression): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withConnectionPropertyInternal(name, value));
+    }
+
+    /** @internal */
+    private async _withConnectionPropertyValueInternal(name: string, value: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, value };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withConnectionPropertyValue',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a connection property with a string value */
+    withConnectionPropertyValue(name: string, value: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withConnectionPropertyValueInternal(name, value));
+    }
+
+    /** @internal */
+    private async _withArgsInternal(args: string[]): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, args };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withArgs',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds arguments */
+    withArgs(args: string[]): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withArgsInternal(args));
+    }
+
+    /** @internal */
+    private async _withArgsCallbackInternal(callback: (obj: CommandLineArgsCallbackContext) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const objHandle = wrapIfHandle(objData) as CommandLineArgsCallbackContextHandle;
+            const obj = new CommandLineArgsCallbackContext(objHandle, this._client);
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withArgsCallback',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets command-line arguments via callback */
+    withArgsCallback(callback: (obj: CommandLineArgsCallbackContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withArgsCallbackInternal(callback));
+    }
+
+    /** @internal */
+    private async _withArgsCallbackAsyncInternal(callback: (arg: CommandLineArgsCallbackContext) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as CommandLineArgsCallbackContextHandle;
+            const arg = new CommandLineArgsCallbackContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withArgsCallbackAsync',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets command-line arguments via async callback */
+    withArgsCallbackAsync(callback: (arg: CommandLineArgsCallbackContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withArgsCallbackAsyncInternal(callback));
+    }
+
+    /** @internal */
+    private async _withReferenceEnvironmentInternal(options: ReferenceEnvironmentInjectionOptions): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, options };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withReferenceEnvironment',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures which reference values are injected into environment variables */
+    withReferenceEnvironment(options: ReferenceEnvironmentInjectionOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withReferenceEnvironmentInternal(options));
+    }
+
+    /** @internal */
+    private async _withReferenceInternal(source: ResourceBuilderBase, connectionName?: string, optional?: boolean, name?: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, source };
+        if (connectionName !== undefined) rpcArgs.connectionName = connectionName;
+        if (optional !== undefined) rpcArgs.optional = optional;
+        if (name !== undefined) rpcArgs.name = name;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withReference',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a reference to another resource */
+    withReference(source: ResourceBuilderBase, options?: WithReferenceOptions): MongoDBServerResourcePromise {
+        const connectionName = options?.connectionName;
+        const optional = options?.optional;
+        const name = options?.name;
+        return new MongoDBServerResourcePromise(this._withReferenceInternal(source, connectionName, optional, name));
+    }
+
+    /** Gets a connection property by key */
+    async getConnectionProperty(key: string): Promise<ReferenceExpression> {
+        const rpcArgs: Record<string, unknown> = { resource: this._handle, key };
+        return await this._client.invokeCapability<ReferenceExpression>(
+            'Aspire.Hosting/getConnectionProperty',
+            rpcArgs
+        );
+    }
+
+    /** @internal */
+    private async _withReferenceUriInternal(name: string, uri: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, uri };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withReferenceUri',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a reference to a URI */
+    withReferenceUri(name: string, uri: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withReferenceUriInternal(name, uri));
+    }
+
+    /** @internal */
+    private async _withReferenceExternalServiceInternal(externalService: ExternalServiceResource): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, externalService };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withReferenceExternalService',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a reference to an external service */
+    withReferenceExternalService(externalService: ExternalServiceResource): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withReferenceExternalServiceInternal(externalService));
+    }
+
+    /** @internal */
+    private async _withReferenceEndpointInternal(endpointReference: EndpointReference): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, endpointReference };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withReferenceEndpoint',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a reference to an endpoint */
+    withReferenceEndpoint(endpointReference: EndpointReference): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withReferenceEndpointInternal(endpointReference));
+    }
+
+    /** @internal */
+    private async _withEndpointInternal(port?: number, targetPort?: number, scheme?: string, name?: string, env?: string, isProxied?: boolean, isExternal?: boolean, protocol?: ProtocolType): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (port !== undefined) rpcArgs.port = port;
+        if (targetPort !== undefined) rpcArgs.targetPort = targetPort;
+        if (scheme !== undefined) rpcArgs.scheme = scheme;
+        if (name !== undefined) rpcArgs.name = name;
+        if (env !== undefined) rpcArgs.env = env;
+        if (isProxied !== undefined) rpcArgs.isProxied = isProxied;
+        if (isExternal !== undefined) rpcArgs.isExternal = isExternal;
+        if (protocol !== undefined) rpcArgs.protocol = protocol;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withEndpoint',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a network endpoint */
+    withEndpoint(options?: WithEndpointOptions): MongoDBServerResourcePromise {
+        const port = options?.port;
+        const targetPort = options?.targetPort;
+        const scheme = options?.scheme;
+        const name = options?.name;
+        const env = options?.env;
+        const isProxied = options?.isProxied;
+        const isExternal = options?.isExternal;
+        const protocol = options?.protocol;
+        return new MongoDBServerResourcePromise(this._withEndpointInternal(port, targetPort, scheme, name, env, isProxied, isExternal, protocol));
+    }
+
+    /** @internal */
+    private async _withHttpEndpointInternal(port?: number, targetPort?: number, name?: string, env?: string, isProxied?: boolean): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (port !== undefined) rpcArgs.port = port;
+        if (targetPort !== undefined) rpcArgs.targetPort = targetPort;
+        if (name !== undefined) rpcArgs.name = name;
+        if (env !== undefined) rpcArgs.env = env;
+        if (isProxied !== undefined) rpcArgs.isProxied = isProxied;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withHttpEndpoint',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds an HTTP endpoint */
+    withHttpEndpoint(options?: WithHttpEndpointOptions): MongoDBServerResourcePromise {
+        const port = options?.port;
+        const targetPort = options?.targetPort;
+        const name = options?.name;
+        const env = options?.env;
+        const isProxied = options?.isProxied;
+        return new MongoDBServerResourcePromise(this._withHttpEndpointInternal(port, targetPort, name, env, isProxied));
+    }
+
+    /** @internal */
+    private async _withHttpsEndpointInternal(port?: number, targetPort?: number, name?: string, env?: string, isProxied?: boolean): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (port !== undefined) rpcArgs.port = port;
+        if (targetPort !== undefined) rpcArgs.targetPort = targetPort;
+        if (name !== undefined) rpcArgs.name = name;
+        if (env !== undefined) rpcArgs.env = env;
+        if (isProxied !== undefined) rpcArgs.isProxied = isProxied;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withHttpsEndpoint',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds an HTTPS endpoint */
+    withHttpsEndpoint(options?: WithHttpsEndpointOptions): MongoDBServerResourcePromise {
+        const port = options?.port;
+        const targetPort = options?.targetPort;
+        const name = options?.name;
+        const env = options?.env;
+        const isProxied = options?.isProxied;
+        return new MongoDBServerResourcePromise(this._withHttpsEndpointInternal(port, targetPort, name, env, isProxied));
+    }
+
+    /** @internal */
+    private async _withExternalHttpEndpointsInternal(): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withExternalHttpEndpoints',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Makes HTTP endpoints externally accessible */
+    withExternalHttpEndpoints(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withExternalHttpEndpointsInternal());
+    }
+
+    /** Gets an endpoint reference */
+    async getEndpoint(name: string): Promise<EndpointReference> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name };
+        return await this._client.invokeCapability<EndpointReference>(
+            'Aspire.Hosting/getEndpoint',
+            rpcArgs
+        );
+    }
+
+    /** @internal */
+    private async _asHttp2ServiceInternal(): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/asHttp2Service',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures resource for HTTP/2 */
+    asHttp2Service(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._asHttp2ServiceInternal());
+    }
+
+    /** @internal */
+    private async _withUrlsCallbackInternal(callback: (obj: ResourceUrlsCallbackContext) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const objHandle = wrapIfHandle(objData) as ResourceUrlsCallbackContextHandle;
+            const obj = new ResourceUrlsCallbackContext(objHandle, this._client);
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withUrlsCallback',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Customizes displayed URLs via callback */
+    withUrlsCallback(callback: (obj: ResourceUrlsCallbackContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withUrlsCallbackInternal(callback));
+    }
+
+    /** @internal */
+    private async _withUrlsCallbackAsyncInternal(callback: (arg: ResourceUrlsCallbackContext) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceUrlsCallbackContextHandle;
+            const arg = new ResourceUrlsCallbackContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withUrlsCallbackAsync',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Customizes displayed URLs via async callback */
+    withUrlsCallbackAsync(callback: (arg: ResourceUrlsCallbackContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withUrlsCallbackAsyncInternal(callback));
+    }
+
+    /** @internal */
+    private async _withUrlInternal(url: string, displayText?: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, url };
+        if (displayText !== undefined) rpcArgs.displayText = displayText;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withUrl',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds or modifies displayed URLs */
+    withUrl(url: string, options?: WithUrlOptions): MongoDBServerResourcePromise {
+        const displayText = options?.displayText;
+        return new MongoDBServerResourcePromise(this._withUrlInternal(url, displayText));
+    }
+
+    /** @internal */
+    private async _withUrlExpressionInternal(url: ReferenceExpression, displayText?: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, url };
+        if (displayText !== undefined) rpcArgs.displayText = displayText;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withUrlExpression',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a URL using a reference expression */
+    withUrlExpression(url: ReferenceExpression, options?: WithUrlExpressionOptions): MongoDBServerResourcePromise {
+        const displayText = options?.displayText;
+        return new MongoDBServerResourcePromise(this._withUrlExpressionInternal(url, displayText));
+    }
+
+    /** @internal */
+    private async _withUrlForEndpointInternal(endpointName: string, callback: (obj: ResourceUrlAnnotation) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const obj = wrapIfHandle(objData) as ResourceUrlAnnotation;
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, endpointName, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withUrlForEndpoint',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Customizes the URL for a specific endpoint via callback */
+    withUrlForEndpoint(endpointName: string, callback: (obj: ResourceUrlAnnotation) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withUrlForEndpointInternal(endpointName, callback));
+    }
+
+    /** @internal */
+    private async _withUrlForEndpointFactoryInternal(endpointName: string, callback: (arg: EndpointReference) => Promise<ResourceUrlAnnotation>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as EndpointReferenceHandle;
+            const arg = new EndpointReference(argHandle, this._client);
+            return await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, endpointName, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withUrlForEndpointFactory',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a URL for a specific endpoint via factory callback */
+    withUrlForEndpointFactory(endpointName: string, callback: (arg: EndpointReference) => Promise<ResourceUrlAnnotation>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withUrlForEndpointFactoryInternal(endpointName, callback));
+    }
+
+    /** @internal */
+    private async _excludeFromManifestInternal(): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/excludeFromManifest',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Excludes the resource from the deployment manifest */
+    excludeFromManifest(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._excludeFromManifestInternal());
+    }
+
+    /** @internal */
+    private async _waitForInternal(dependency: ResourceBuilderBase): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, dependency };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/waitForResource',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Waits for another resource to be ready */
+    waitFor(dependency: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._waitForInternal(dependency));
+    }
+
+    /** @internal */
+    private async _waitForWithBehaviorInternal(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, dependency, waitBehavior };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/waitForWithBehavior',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Waits for another resource with specific behavior */
+    waitForWithBehavior(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._waitForWithBehaviorInternal(dependency, waitBehavior));
+    }
+
+    /** @internal */
+    private async _waitForStartInternal(dependency: ResourceBuilderBase): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, dependency };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/waitForResourceStart',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Waits for another resource to start */
+    waitForStart(dependency: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._waitForStartInternal(dependency));
+    }
+
+    /** @internal */
+    private async _waitForStartWithBehaviorInternal(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, dependency, waitBehavior };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/waitForStartWithBehavior',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Waits for another resource to start with specific behavior */
+    waitForStartWithBehavior(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._waitForStartWithBehaviorInternal(dependency, waitBehavior));
+    }
+
+    /** @internal */
+    private async _withExplicitStartInternal(): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withExplicitStart',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Prevents resource from starting automatically */
+    withExplicitStart(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withExplicitStartInternal());
+    }
+
+    /** @internal */
+    private async _waitForCompletionInternal(dependency: ResourceBuilderBase, exitCode?: number): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, dependency };
+        if (exitCode !== undefined) rpcArgs.exitCode = exitCode;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/waitForResourceCompletion',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Waits for resource completion */
+    waitForCompletion(dependency: ResourceBuilderBase, options?: WaitForCompletionOptions): MongoDBServerResourcePromise {
+        const exitCode = options?.exitCode;
+        return new MongoDBServerResourcePromise(this._waitForCompletionInternal(dependency, exitCode));
+    }
+
+    /** @internal */
+    private async _withHealthCheckInternal(key: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, key };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withHealthCheck',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a health check by key */
+    withHealthCheck(key: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withHealthCheckInternal(key));
+    }
+
+    /** @internal */
+    private async _withHttpHealthCheckInternal(path?: string, statusCode?: number, endpointName?: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (path !== undefined) rpcArgs.path = path;
+        if (statusCode !== undefined) rpcArgs.statusCode = statusCode;
+        if (endpointName !== undefined) rpcArgs.endpointName = endpointName;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withHttpHealthCheck',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds an HTTP health check */
+    withHttpHealthCheck(options?: WithHttpHealthCheckOptions): MongoDBServerResourcePromise {
+        const path = options?.path;
+        const statusCode = options?.statusCode;
+        const endpointName = options?.endpointName;
+        return new MongoDBServerResourcePromise(this._withHttpHealthCheckInternal(path, statusCode, endpointName));
+    }
+
+    /** @internal */
+    private async _withCommandInternal(name: string, displayName: string, executeCommand: (arg: ExecuteCommandContext) => Promise<ExecuteCommandResult>, commandOptions?: CommandOptions): Promise<MongoDBServerResource> {
+        const executeCommandId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ExecuteCommandContextHandle;
+            const arg = new ExecuteCommandContext(argHandle, this._client);
+            return await executeCommand(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, displayName, executeCommand: executeCommandId };
+        if (commandOptions !== undefined) rpcArgs.commandOptions = commandOptions;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withCommand',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a resource command */
+    withCommand(name: string, displayName: string, executeCommand: (arg: ExecuteCommandContext) => Promise<ExecuteCommandResult>, options?: WithCommandOptions): MongoDBServerResourcePromise {
+        const commandOptions = options?.commandOptions;
+        return new MongoDBServerResourcePromise(this._withCommandInternal(name, displayName, executeCommand, commandOptions));
+    }
+
+    /** @internal */
+    private async _withDeveloperCertificateTrustInternal(trust: boolean): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, trust };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withDeveloperCertificateTrust',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures developer certificate trust */
+    withDeveloperCertificateTrust(trust: boolean): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withDeveloperCertificateTrustInternal(trust));
+    }
+
+    /** @internal */
+    private async _withCertificateTrustScopeInternal(scope: CertificateTrustScope): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, scope };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withCertificateTrustScope',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the certificate trust scope */
+    withCertificateTrustScope(scope: CertificateTrustScope): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withCertificateTrustScopeInternal(scope));
+    }
+
+    /** @internal */
+    private async _withHttpsDeveloperCertificateInternal(password?: ParameterResource): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (password !== undefined) rpcArgs.password = password;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withParameterHttpsDeveloperCertificate',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures HTTPS with a developer certificate */
+    withHttpsDeveloperCertificate(options?: WithHttpsDeveloperCertificateOptions): MongoDBServerResourcePromise {
+        const password = options?.password;
+        return new MongoDBServerResourcePromise(this._withHttpsDeveloperCertificateInternal(password));
+    }
+
+    /** @internal */
+    private async _withoutHttpsCertificateInternal(): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withoutHttpsCertificate',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Removes HTTPS certificate configuration */
+    withoutHttpsCertificate(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withoutHttpsCertificateInternal());
+    }
+
+    /** @internal */
+    private async _withRelationshipInternal(resourceBuilder: ResourceBuilderBase, type: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, resourceBuilder, type };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withBuilderRelationship',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a relationship to another resource */
+    withRelationship(resourceBuilder: ResourceBuilderBase, type: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withRelationshipInternal(resourceBuilder, type));
+    }
+
+    /** @internal */
+    private async _withParentRelationshipInternal(parent: ResourceBuilderBase): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, parent };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withBuilderParentRelationship',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the parent relationship */
+    withParentRelationship(parent: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withParentRelationshipInternal(parent));
+    }
+
+    /** @internal */
+    private async _withChildRelationshipInternal(child: ResourceBuilderBase): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, child };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withBuilderChildRelationship',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets a child relationship */
+    withChildRelationship(child: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withChildRelationshipInternal(child));
+    }
+
+    /** @internal */
+    private async _withIconNameInternal(iconName: string, iconVariant?: IconVariant): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, iconName };
+        if (iconVariant !== undefined) rpcArgs.iconVariant = iconVariant;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withIconName',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the icon for the resource */
+    withIconName(iconName: string, options?: WithIconNameOptions): MongoDBServerResourcePromise {
+        const iconVariant = options?.iconVariant;
+        return new MongoDBServerResourcePromise(this._withIconNameInternal(iconName, iconVariant));
+    }
+
+    /** @internal */
+    private async _withHttpProbeInternal(probeType: ProbeType, path?: string, initialDelaySeconds?: number, periodSeconds?: number, timeoutSeconds?: number, failureThreshold?: number, successThreshold?: number, endpointName?: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, probeType };
+        if (path !== undefined) rpcArgs.path = path;
+        if (initialDelaySeconds !== undefined) rpcArgs.initialDelaySeconds = initialDelaySeconds;
+        if (periodSeconds !== undefined) rpcArgs.periodSeconds = periodSeconds;
+        if (timeoutSeconds !== undefined) rpcArgs.timeoutSeconds = timeoutSeconds;
+        if (failureThreshold !== undefined) rpcArgs.failureThreshold = failureThreshold;
+        if (successThreshold !== undefined) rpcArgs.successThreshold = successThreshold;
+        if (endpointName !== undefined) rpcArgs.endpointName = endpointName;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withHttpProbe',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds an HTTP health probe to the resource */
+    withHttpProbe(probeType: ProbeType, options?: WithHttpProbeOptions): MongoDBServerResourcePromise {
+        const path = options?.path;
+        const initialDelaySeconds = options?.initialDelaySeconds;
+        const periodSeconds = options?.periodSeconds;
+        const timeoutSeconds = options?.timeoutSeconds;
+        const failureThreshold = options?.failureThreshold;
+        const successThreshold = options?.successThreshold;
+        const endpointName = options?.endpointName;
+        return new MongoDBServerResourcePromise(this._withHttpProbeInternal(probeType, path, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold, successThreshold, endpointName));
+    }
+
+    /** @internal */
+    private async _excludeFromMcpInternal(): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/excludeFromMcp',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Excludes the resource from MCP server exposure */
+    excludeFromMcp(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._excludeFromMcpInternal());
+    }
+
+    /** @internal */
+    private async _withRemoteImageNameInternal(remoteImageName: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, remoteImageName };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withRemoteImageName',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the remote image name for publishing */
+    withRemoteImageName(remoteImageName: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withRemoteImageNameInternal(remoteImageName));
+    }
+
+    /** @internal */
+    private async _withRemoteImageTagInternal(remoteImageTag: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, remoteImageTag };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withRemoteImageTag',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Sets the remote image tag for publishing */
+    withRemoteImageTag(remoteImageTag: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withRemoteImageTagInternal(remoteImageTag));
+    }
+
+    /** @internal */
+    private async _withPipelineStepFactoryInternal(stepName: string, callback: (arg: PipelineStepContext) => Promise<void>, dependsOn?: string[], requiredBy?: string[], tags?: string[], description?: string): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as PipelineStepContextHandle;
+            const arg = new PipelineStepContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, stepName, callback: callbackId };
+        if (dependsOn !== undefined) rpcArgs.dependsOn = dependsOn;
+        if (requiredBy !== undefined) rpcArgs.requiredBy = requiredBy;
+        if (tags !== undefined) rpcArgs.tags = tags;
+        if (description !== undefined) rpcArgs.description = description;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withPipelineStepFactory',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a pipeline step to the resource */
+    withPipelineStepFactory(stepName: string, callback: (arg: PipelineStepContext) => Promise<void>, options?: WithPipelineStepFactoryOptions): MongoDBServerResourcePromise {
+        const dependsOn = options?.dependsOn;
+        const requiredBy = options?.requiredBy;
+        const tags = options?.tags;
+        const description = options?.description;
+        return new MongoDBServerResourcePromise(this._withPipelineStepFactoryInternal(stepName, callback, dependsOn, requiredBy, tags, description));
+    }
+
+    /** @internal */
+    private async _withPipelineConfigurationAsyncInternal(callback: (arg: PipelineConfigurationContext) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as PipelineConfigurationContextHandle;
+            const arg = new PipelineConfigurationContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withPipelineConfigurationAsync',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures pipeline step dependencies via an async callback */
+    withPipelineConfigurationAsync(callback: (arg: PipelineConfigurationContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withPipelineConfigurationAsyncInternal(callback));
+    }
+
+    /** @internal */
+    private async _withPipelineConfigurationInternal(callback: (obj: PipelineConfigurationContext) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const objHandle = wrapIfHandle(objData) as PipelineConfigurationContextHandle;
+            const obj = new PipelineConfigurationContext(objHandle, this._client);
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withPipelineConfiguration',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Configures pipeline step dependencies via a callback */
+    withPipelineConfiguration(callback: (obj: PipelineConfigurationContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withPipelineConfigurationInternal(callback));
+    }
+
+    /** @internal */
+    private async _withVolumeInternal(target: string, name?: string, isReadOnly?: boolean): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { resource: this._handle, target };
+        if (name !== undefined) rpcArgs.name = name;
+        if (isReadOnly !== undefined) rpcArgs.isReadOnly = isReadOnly;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/withVolume',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a volume */
+    withVolume(target: string, options?: WithVolumeOptions): MongoDBServerResourcePromise {
+        const name = options?.name;
+        const isReadOnly = options?.isReadOnly;
+        return new MongoDBServerResourcePromise(this._withVolumeInternal(target, name, isReadOnly));
+    }
+
+    /** Gets the resource name */
+    async getResourceName(): Promise<string> {
+        const rpcArgs: Record<string, unknown> = { resource: this._handle };
+        return await this._client.invokeCapability<string>(
+            'Aspire.Hosting/getResourceName',
+            rpcArgs
+        );
+    }
+
+    /** @internal */
+    private async _onBeforeResourceStartedInternal(callback: (arg: BeforeResourceStartedEvent) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as BeforeResourceStartedEventHandle;
+            const arg = new BeforeResourceStartedEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/onBeforeResourceStarted',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Subscribes to the BeforeResourceStarted event */
+    onBeforeResourceStarted(callback: (arg: BeforeResourceStartedEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._onBeforeResourceStartedInternal(callback));
+    }
+
+    /** @internal */
+    private async _onResourceStoppedInternal(callback: (arg: ResourceStoppedEvent) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceStoppedEventHandle;
+            const arg = new ResourceStoppedEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/onResourceStopped',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Subscribes to the ResourceStopped event */
+    onResourceStopped(callback: (arg: ResourceStoppedEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._onResourceStoppedInternal(callback));
+    }
+
+    /** @internal */
+    private async _onConnectionStringAvailableInternal(callback: (arg: ConnectionStringAvailableEvent) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ConnectionStringAvailableEventHandle;
+            const arg = new ConnectionStringAvailableEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/onConnectionStringAvailable',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Subscribes to the ConnectionStringAvailable event */
+    onConnectionStringAvailable(callback: (arg: ConnectionStringAvailableEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._onConnectionStringAvailableInternal(callback));
+    }
+
+    /** @internal */
+    private async _onInitializeResourceInternal(callback: (arg: InitializeResourceEvent) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as InitializeResourceEventHandle;
+            const arg = new InitializeResourceEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/onInitializeResource',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Subscribes to the InitializeResource event */
+    onInitializeResource(callback: (arg: InitializeResourceEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._onInitializeResourceInternal(callback));
+    }
+
+    /** @internal */
+    private async _onResourceEndpointsAllocatedInternal(callback: (arg: ResourceEndpointsAllocatedEvent) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceEndpointsAllocatedEventHandle;
+            const arg = new ResourceEndpointsAllocatedEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/onResourceEndpointsAllocated',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Subscribes to the ResourceEndpointsAllocated event */
+    onResourceEndpointsAllocated(callback: (arg: ResourceEndpointsAllocatedEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._onResourceEndpointsAllocatedInternal(callback));
+    }
+
+    /** @internal */
+    private async _onResourceReadyInternal(callback: (arg: ResourceReadyEvent) => Promise<void>): Promise<MongoDBServerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceReadyEventHandle;
+            const arg = new ResourceReadyEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting/onResourceReady',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Subscribes to the ResourceReady event */
+    onResourceReady(callback: (arg: ResourceReadyEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._onResourceReadyInternal(callback));
+    }
+
+    /** @internal */
+    private async _addDatabaseInternal(name: string, databaseName?: string): Promise<MongoDBDatabaseResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name };
+        if (databaseName !== undefined) rpcArgs.databaseName = databaseName;
+        const result = await this._client.invokeCapability<MongoDBDatabaseResourceHandle>(
+            'Aspire.Hosting.MongoDB/addDatabase',
+            rpcArgs
+        );
+        return new MongoDBDatabaseResource(result, this._client);
+    }
+
+    /** Adds a MongoDB database resource */
+    addDatabase(name: string, options?: AddDatabaseOptions): MongoDBDatabaseResourcePromise {
+        const databaseName = options?.databaseName;
+        return new MongoDBDatabaseResourcePromise(this._addDatabaseInternal(name, databaseName));
+    }
+
+    /** @internal */
+    private async _withMongoExpressInternal(configureContainer?: (obj: MongoExpressContainerResource) => Promise<void>, containerName?: string): Promise<MongoDBServerResource> {
+        const configureContainerId = configureContainer ? registerCallback(async (objData: unknown) => {
+            const objHandle = wrapIfHandle(objData) as MongoExpressContainerResourceHandle;
+            const obj = new MongoExpressContainerResource(objHandle, this._client);
+            await configureContainer(obj);
+        }) : undefined;
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (configureContainer !== undefined) rpcArgs.configureContainer = configureContainerId;
+        if (containerName !== undefined) rpcArgs.containerName = containerName;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting.MongoDB/withMongoExpress',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a MongoExpress administration platform for MongoDB */
+    withMongoExpress(options?: WithMongoExpressOptions): MongoDBServerResourcePromise {
+        const configureContainer = options?.configureContainer;
+        const containerName = options?.containerName;
+        return new MongoDBServerResourcePromise(this._withMongoExpressInternal(configureContainer, containerName));
+    }
+
+    /** @internal */
+    private async _withDataVolumeInternal(name?: string, isReadOnly?: boolean): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (name !== undefined) rpcArgs.name = name;
+        if (isReadOnly !== undefined) rpcArgs.isReadOnly = isReadOnly;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting.MongoDB/withDataVolume',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a named volume for the MongoDB data folder */
+    withDataVolume(options?: WithDataVolumeOptions): MongoDBServerResourcePromise {
+        const name = options?.name;
+        const isReadOnly = options?.isReadOnly;
+        return new MongoDBServerResourcePromise(this._withDataVolumeInternal(name, isReadOnly));
+    }
+
+    /** @internal */
+    private async _withDataBindMountInternal(source: string, isReadOnly?: boolean): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, source };
+        if (isReadOnly !== undefined) rpcArgs.isReadOnly = isReadOnly;
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting.MongoDB/withDataBindMount',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Adds a bind mount for the MongoDB data folder */
+    withDataBindMount(source: string, options?: WithDataBindMountOptions): MongoDBServerResourcePromise {
+        const isReadOnly = options?.isReadOnly;
+        return new MongoDBServerResourcePromise(this._withDataBindMountInternal(source, isReadOnly));
+    }
+
+    /** @internal */
+    private async _withInitFilesInternal(source: string): Promise<MongoDBServerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, source };
+        const result = await this._client.invokeCapability<MongoDBServerResourceHandle>(
+            'Aspire.Hosting.MongoDB/withInitFiles',
+            rpcArgs
+        );
+        return new MongoDBServerResource(result, this._client);
+    }
+
+    /** Copies init files into a MongoDB container */
+    withInitFiles(source: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._withInitFilesInternal(source));
+    }
+
+}
+
+/**
+ * Thenable wrapper for MongoDBServerResource that enables fluent chaining.
+ * @example
+ * await builder.addSomething().withX().withY();
+ */
+export class MongoDBServerResourcePromise implements PromiseLike<MongoDBServerResource> {
+    constructor(private _promise: Promise<MongoDBServerResource>) {}
+
+    then<TResult1 = MongoDBServerResource, TResult2 = never>(
+        onfulfilled?: ((value: MongoDBServerResource) => TResult1 | PromiseLike<TResult1>) | null,
+        onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+    ): PromiseLike<TResult1 | TResult2> {
+        return this._promise.then(onfulfilled, onrejected);
+    }
+
+    /** Configures a resource to use a container registry */
+    withContainerRegistry(registry: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withContainerRegistry(registry)));
+    }
+
+    /** Adds a bind mount */
+    withBindMount(source: string, target: string, options?: WithBindMountOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withBindMount(source, target, options)));
+    }
+
+    /** Sets the container entrypoint */
+    withEntrypoint(entrypoint: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withEntrypoint(entrypoint)));
+    }
+
+    /** Sets the container image tag */
+    withImageTag(tag: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withImageTag(tag)));
+    }
+
+    /** Sets the container image registry */
+    withImageRegistry(registry: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withImageRegistry(registry)));
+    }
+
+    /** Sets the container image */
+    withImage(image: string, options?: WithImageOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withImage(image, options)));
+    }
+
+    /** Sets the image SHA256 digest */
+    withImageSHA256(sha256: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withImageSHA256(sha256)));
+    }
+
+    /** Adds runtime arguments for the container */
+    withContainerRuntimeArgs(args: string[]): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withContainerRuntimeArgs(args)));
+    }
+
+    /** Sets the lifetime behavior of the container resource */
+    withLifetime(lifetime: ContainerLifetime): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withLifetime(lifetime)));
+    }
+
+    /** Sets the container image pull policy */
+    withImagePullPolicy(pullPolicy: ImagePullPolicy): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withImagePullPolicy(pullPolicy)));
+    }
+
+    /** Configures the resource to be published as a container */
+    publishAsContainer(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.publishAsContainer()));
+    }
+
+    /** Configures the resource to use a Dockerfile */
+    withDockerfile(contextPath: string, options?: WithDockerfileOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withDockerfile(contextPath, options)));
+    }
+
+    /** Sets the container name */
+    withContainerName(name: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withContainerName(name)));
+    }
+
+    /** Adds a build argument from a string value or parameter resource */
+    withBuildArg(name: string, value: string | ParameterResource): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withBuildArg(name, value)));
+    }
+
+    /** Adds a build secret from a parameter resource */
+    withBuildSecret(name: string, value: ParameterResource): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withBuildSecret(name, value)));
+    }
+
+    /** Overrides container certificate bundle and directory paths used for trust configuration */
+    withContainerCertificatePaths(options?: WithContainerCertificatePathsOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withContainerCertificatePaths(options)));
+    }
+
+    /** Configures endpoint proxy support */
+    withEndpointProxySupport(proxyEnabled: boolean): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withEndpointProxySupport(proxyEnabled)));
+    }
+
+    /** Sets the base image for a Dockerfile build */
+    withDockerfileBaseImage(options?: WithDockerfileBaseImageOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withDockerfileBaseImage(options)));
+    }
+
+    /** Adds a network alias for the container */
+    withContainerNetworkAlias(alias: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withContainerNetworkAlias(alias)));
+    }
+
+    /** Configures an MCP server endpoint on the resource */
+    withMcpServer(options?: WithMcpServerOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withMcpServer(options)));
+    }
+
+    /** Configures OTLP telemetry export */
+    withOtlpExporter(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withOtlpExporter()));
+    }
+
+    /** Configures OTLP telemetry export with specific protocol */
+    withOtlpExporterProtocol(protocol: OtlpProtocol): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withOtlpExporterProtocol(protocol)));
+    }
+
+    /** Publishes the resource as a connection string */
+    publishAsConnectionString(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.publishAsConnectionString()));
+    }
+
+    /** Adds a required command dependency */
+    withRequiredCommand(command: string, options?: WithRequiredCommandOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withRequiredCommand(command, options)));
+    }
+
+    /** Sets environment variables via callback */
+    withEnvironmentCallback(callback: (arg: EnvironmentCallbackContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withEnvironmentCallback(callback)));
+    }
+
+    /** Sets an environment variable from an endpoint reference */
+    withEnvironmentEndpoint(name: string, endpointReference: EndpointReference): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withEnvironmentEndpoint(name, endpointReference)));
+    }
+
+    /** Sets an environment variable on the resource */
+    withEnvironment(name: string, value: string | ReferenceExpression | EndpointReference | ParameterResource | ResourceWithConnectionString): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withEnvironment(name, value)));
+    }
+
+    /** Sets an environment variable from a parameter resource */
+    withEnvironmentParameter(name: string, parameter: ParameterResource): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withEnvironmentParameter(name, parameter)));
+    }
+
+    /** Sets an environment variable from a connection string resource */
+    withEnvironmentConnectionString(envVarName: string, resource: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withEnvironmentConnectionString(envVarName, resource)));
+    }
+
+    /** Adds a connection property with a string or reference expression value */
+    withConnectionProperty(name: string, value: string | ReferenceExpression): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withConnectionProperty(name, value)));
+    }
+
+    /** Adds a connection property with a string value */
+    withConnectionPropertyValue(name: string, value: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withConnectionPropertyValue(name, value)));
+    }
+
+    /** Adds arguments */
+    withArgs(args: string[]): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withArgs(args)));
+    }
+
+    /** Sets command-line arguments via callback */
+    withArgsCallback(callback: (obj: CommandLineArgsCallbackContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withArgsCallback(callback)));
+    }
+
+    /** Sets command-line arguments via async callback */
+    withArgsCallbackAsync(callback: (arg: CommandLineArgsCallbackContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withArgsCallbackAsync(callback)));
+    }
+
+    /** Configures which reference values are injected into environment variables */
+    withReferenceEnvironment(options: ReferenceEnvironmentInjectionOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withReferenceEnvironment(options)));
+    }
+
+    /** Adds a reference to another resource */
+    withReference(source: ResourceBuilderBase, options?: WithReferenceOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withReference(source, options)));
+    }
+
+    /** Gets a connection property by key */
+    getConnectionProperty(key: string): Promise<ReferenceExpression> {
+        return this._promise.then(obj => obj.getConnectionProperty(key));
+    }
+
+    /** Adds a reference to a URI */
+    withReferenceUri(name: string, uri: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withReferenceUri(name, uri)));
+    }
+
+    /** Adds a reference to an external service */
+    withReferenceExternalService(externalService: ExternalServiceResource): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withReferenceExternalService(externalService)));
+    }
+
+    /** Adds a reference to an endpoint */
+    withReferenceEndpoint(endpointReference: EndpointReference): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withReferenceEndpoint(endpointReference)));
+    }
+
+    /** Adds a network endpoint */
+    withEndpoint(options?: WithEndpointOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withEndpoint(options)));
+    }
+
+    /** Adds an HTTP endpoint */
+    withHttpEndpoint(options?: WithHttpEndpointOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withHttpEndpoint(options)));
+    }
+
+    /** Adds an HTTPS endpoint */
+    withHttpsEndpoint(options?: WithHttpsEndpointOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withHttpsEndpoint(options)));
+    }
+
+    /** Makes HTTP endpoints externally accessible */
+    withExternalHttpEndpoints(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withExternalHttpEndpoints()));
+    }
+
+    /** Gets an endpoint reference */
+    getEndpoint(name: string): Promise<EndpointReference> {
+        return this._promise.then(obj => obj.getEndpoint(name));
+    }
+
+    /** Configures resource for HTTP/2 */
+    asHttp2Service(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.asHttp2Service()));
+    }
+
+    /** Customizes displayed URLs via callback */
+    withUrlsCallback(callback: (obj: ResourceUrlsCallbackContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withUrlsCallback(callback)));
+    }
+
+    /** Customizes displayed URLs via async callback */
+    withUrlsCallbackAsync(callback: (arg: ResourceUrlsCallbackContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withUrlsCallbackAsync(callback)));
+    }
+
+    /** Adds or modifies displayed URLs */
+    withUrl(url: string, options?: WithUrlOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withUrl(url, options)));
+    }
+
+    /** Adds a URL using a reference expression */
+    withUrlExpression(url: ReferenceExpression, options?: WithUrlExpressionOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withUrlExpression(url, options)));
+    }
+
+    /** Customizes the URL for a specific endpoint via callback */
+    withUrlForEndpoint(endpointName: string, callback: (obj: ResourceUrlAnnotation) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withUrlForEndpoint(endpointName, callback)));
+    }
+
+    /** Adds a URL for a specific endpoint via factory callback */
+    withUrlForEndpointFactory(endpointName: string, callback: (arg: EndpointReference) => Promise<ResourceUrlAnnotation>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withUrlForEndpointFactory(endpointName, callback)));
+    }
+
+    /** Excludes the resource from the deployment manifest */
+    excludeFromManifest(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.excludeFromManifest()));
+    }
+
+    /** Waits for another resource to be ready */
+    waitFor(dependency: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.waitFor(dependency)));
+    }
+
+    /** Waits for another resource with specific behavior */
+    waitForWithBehavior(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.waitForWithBehavior(dependency, waitBehavior)));
+    }
+
+    /** Waits for another resource to start */
+    waitForStart(dependency: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.waitForStart(dependency)));
+    }
+
+    /** Waits for another resource to start with specific behavior */
+    waitForStartWithBehavior(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.waitForStartWithBehavior(dependency, waitBehavior)));
+    }
+
+    /** Prevents resource from starting automatically */
+    withExplicitStart(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withExplicitStart()));
+    }
+
+    /** Waits for resource completion */
+    waitForCompletion(dependency: ResourceBuilderBase, options?: WaitForCompletionOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.waitForCompletion(dependency, options)));
+    }
+
+    /** Adds a health check by key */
+    withHealthCheck(key: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withHealthCheck(key)));
+    }
+
+    /** Adds an HTTP health check */
+    withHttpHealthCheck(options?: WithHttpHealthCheckOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withHttpHealthCheck(options)));
+    }
+
+    /** Adds a resource command */
+    withCommand(name: string, displayName: string, executeCommand: (arg: ExecuteCommandContext) => Promise<ExecuteCommandResult>, options?: WithCommandOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withCommand(name, displayName, executeCommand, options)));
+    }
+
+    /** Configures developer certificate trust */
+    withDeveloperCertificateTrust(trust: boolean): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withDeveloperCertificateTrust(trust)));
+    }
+
+    /** Sets the certificate trust scope */
+    withCertificateTrustScope(scope: CertificateTrustScope): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withCertificateTrustScope(scope)));
+    }
+
+    /** Configures HTTPS with a developer certificate */
+    withHttpsDeveloperCertificate(options?: WithHttpsDeveloperCertificateOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withHttpsDeveloperCertificate(options)));
+    }
+
+    /** Removes HTTPS certificate configuration */
+    withoutHttpsCertificate(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withoutHttpsCertificate()));
+    }
+
+    /** Adds a relationship to another resource */
+    withRelationship(resourceBuilder: ResourceBuilderBase, type: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withRelationship(resourceBuilder, type)));
+    }
+
+    /** Sets the parent relationship */
+    withParentRelationship(parent: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withParentRelationship(parent)));
+    }
+
+    /** Sets a child relationship */
+    withChildRelationship(child: ResourceBuilderBase): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withChildRelationship(child)));
+    }
+
+    /** Sets the icon for the resource */
+    withIconName(iconName: string, options?: WithIconNameOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withIconName(iconName, options)));
+    }
+
+    /** Adds an HTTP health probe to the resource */
+    withHttpProbe(probeType: ProbeType, options?: WithHttpProbeOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withHttpProbe(probeType, options)));
+    }
+
+    /** Excludes the resource from MCP server exposure */
+    excludeFromMcp(): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.excludeFromMcp()));
+    }
+
+    /** Sets the remote image name for publishing */
+    withRemoteImageName(remoteImageName: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withRemoteImageName(remoteImageName)));
+    }
+
+    /** Sets the remote image tag for publishing */
+    withRemoteImageTag(remoteImageTag: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withRemoteImageTag(remoteImageTag)));
+    }
+
+    /** Adds a pipeline step to the resource */
+    withPipelineStepFactory(stepName: string, callback: (arg: PipelineStepContext) => Promise<void>, options?: WithPipelineStepFactoryOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withPipelineStepFactory(stepName, callback, options)));
+    }
+
+    /** Configures pipeline step dependencies via an async callback */
+    withPipelineConfigurationAsync(callback: (arg: PipelineConfigurationContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withPipelineConfigurationAsync(callback)));
+    }
+
+    /** Configures pipeline step dependencies via a callback */
+    withPipelineConfiguration(callback: (obj: PipelineConfigurationContext) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withPipelineConfiguration(callback)));
+    }
+
+    /** Adds a volume */
+    withVolume(target: string, options?: WithVolumeOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withVolume(target, options)));
+    }
+
+    /** Gets the resource name */
+    getResourceName(): Promise<string> {
+        return this._promise.then(obj => obj.getResourceName());
+    }
+
+    /** Subscribes to the BeforeResourceStarted event */
+    onBeforeResourceStarted(callback: (arg: BeforeResourceStartedEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.onBeforeResourceStarted(callback)));
+    }
+
+    /** Subscribes to the ResourceStopped event */
+    onResourceStopped(callback: (arg: ResourceStoppedEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.onResourceStopped(callback)));
+    }
+
+    /** Subscribes to the ConnectionStringAvailable event */
+    onConnectionStringAvailable(callback: (arg: ConnectionStringAvailableEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.onConnectionStringAvailable(callback)));
+    }
+
+    /** Subscribes to the InitializeResource event */
+    onInitializeResource(callback: (arg: InitializeResourceEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.onInitializeResource(callback)));
+    }
+
+    /** Subscribes to the ResourceEndpointsAllocated event */
+    onResourceEndpointsAllocated(callback: (arg: ResourceEndpointsAllocatedEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.onResourceEndpointsAllocated(callback)));
+    }
+
+    /** Subscribes to the ResourceReady event */
+    onResourceReady(callback: (arg: ResourceReadyEvent) => Promise<void>): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.onResourceReady(callback)));
+    }
+
+    /** Adds a MongoDB database resource */
+    addDatabase(name: string, options?: AddDatabaseOptions): MongoDBDatabaseResourcePromise {
+        return new MongoDBDatabaseResourcePromise(this._promise.then(obj => obj.addDatabase(name, options)));
+    }
+
+    /** Adds a MongoExpress administration platform for MongoDB */
+    withMongoExpress(options?: WithMongoExpressOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withMongoExpress(options)));
+    }
+
+    /** Adds a named volume for the MongoDB data folder */
+    withDataVolume(options?: WithDataVolumeOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withDataVolume(options)));
+    }
+
+    /** Adds a bind mount for the MongoDB data folder */
+    withDataBindMount(source: string, options?: WithDataBindMountOptions): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withDataBindMount(source, options)));
+    }
+
+    /** Copies init files into a MongoDB container */
+    withInitFiles(source: string): MongoDBServerResourcePromise {
+        return new MongoDBServerResourcePromise(this._promise.then(obj => obj.withInitFiles(source)));
+    }
+
+}
+
+// ============================================================================
+// MongoExpressContainerResource
+// ============================================================================
+
+export class MongoExpressContainerResource extends ResourceBuilderBase<MongoExpressContainerResourceHandle> {
+    constructor(handle: MongoExpressContainerResourceHandle, client: AspireClientRpc) {
+        super(handle, client);
+    }
+
+    /** @internal */
+    private async _withContainerRegistryInternal(registry: ResourceBuilderBase): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, registry };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withContainerRegistry',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures a resource to use a container registry */
+    withContainerRegistry(registry: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withContainerRegistryInternal(registry));
+    }
+
+    /** @internal */
+    private async _withBindMountInternal(source: string, target: string, isReadOnly?: boolean): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, source, target };
+        if (isReadOnly !== undefined) rpcArgs.isReadOnly = isReadOnly;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withBindMount',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a bind mount */
+    withBindMount(source: string, target: string, options?: WithBindMountOptions): MongoExpressContainerResourcePromise {
+        const isReadOnly = options?.isReadOnly;
+        return new MongoExpressContainerResourcePromise(this._withBindMountInternal(source, target, isReadOnly));
+    }
+
+    /** @internal */
+    private async _withEntrypointInternal(entrypoint: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, entrypoint };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withEntrypoint',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the container entrypoint */
+    withEntrypoint(entrypoint: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withEntrypointInternal(entrypoint));
+    }
+
+    /** @internal */
+    private async _withImageTagInternal(tag: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, tag };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withImageTag',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the container image tag */
+    withImageTag(tag: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withImageTagInternal(tag));
+    }
+
+    /** @internal */
+    private async _withImageRegistryInternal(registry: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, registry };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withImageRegistry',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the container image registry */
+    withImageRegistry(registry: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withImageRegistryInternal(registry));
+    }
+
+    /** @internal */
+    private async _withImageInternal(image: string, tag?: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, image };
+        if (tag !== undefined) rpcArgs.tag = tag;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withImage',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the container image */
+    withImage(image: string, options?: WithImageOptions): MongoExpressContainerResourcePromise {
+        const tag = options?.tag;
+        return new MongoExpressContainerResourcePromise(this._withImageInternal(image, tag));
+    }
+
+    /** @internal */
+    private async _withImageSHA256Internal(sha256: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, sha256 };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withImageSHA256',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the image SHA256 digest */
+    withImageSHA256(sha256: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withImageSHA256Internal(sha256));
+    }
+
+    /** @internal */
+    private async _withContainerRuntimeArgsInternal(args: string[]): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, args };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withContainerRuntimeArgs',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds runtime arguments for the container */
+    withContainerRuntimeArgs(args: string[]): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withContainerRuntimeArgsInternal(args));
+    }
+
+    /** @internal */
+    private async _withLifetimeInternal(lifetime: ContainerLifetime): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, lifetime };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withLifetime',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the lifetime behavior of the container resource */
+    withLifetime(lifetime: ContainerLifetime): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withLifetimeInternal(lifetime));
+    }
+
+    /** @internal */
+    private async _withImagePullPolicyInternal(pullPolicy: ImagePullPolicy): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, pullPolicy };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withImagePullPolicy',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the container image pull policy */
+    withImagePullPolicy(pullPolicy: ImagePullPolicy): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withImagePullPolicyInternal(pullPolicy));
+    }
+
+    /** @internal */
+    private async _publishAsContainerInternal(): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/publishAsContainer',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures the resource to be published as a container */
+    publishAsContainer(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._publishAsContainerInternal());
+    }
+
+    /** @internal */
+    private async _withDockerfileInternal(contextPath: string, dockerfilePath?: string, stage?: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, contextPath };
+        if (dockerfilePath !== undefined) rpcArgs.dockerfilePath = dockerfilePath;
+        if (stage !== undefined) rpcArgs.stage = stage;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withDockerfile',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures the resource to use a Dockerfile */
+    withDockerfile(contextPath: string, options?: WithDockerfileOptions): MongoExpressContainerResourcePromise {
+        const dockerfilePath = options?.dockerfilePath;
+        const stage = options?.stage;
+        return new MongoExpressContainerResourcePromise(this._withDockerfileInternal(contextPath, dockerfilePath, stage));
+    }
+
+    /** @internal */
+    private async _withContainerNameInternal(name: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withContainerName',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the container name */
+    withContainerName(name: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withContainerNameInternal(name));
+    }
+
+    /** @internal */
+    private async _withBuildArgInternal(name: string, value: string | ParameterResource): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, value };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withBuildArg',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a build argument from a string value or parameter resource */
+    withBuildArg(name: string, value: string | ParameterResource): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withBuildArgInternal(name, value));
+    }
+
+    /** @internal */
+    private async _withBuildSecretInternal(name: string, value: ParameterResource): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, value };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withParameterBuildSecret',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a build secret from a parameter resource */
+    withBuildSecret(name: string, value: ParameterResource): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withBuildSecretInternal(name, value));
+    }
+
+    /** @internal */
+    private async _withContainerCertificatePathsInternal(customCertificatesDestination?: string, defaultCertificateBundlePaths?: string[], defaultCertificateDirectoryPaths?: string[]): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (customCertificatesDestination !== undefined) rpcArgs.customCertificatesDestination = customCertificatesDestination;
+        if (defaultCertificateBundlePaths !== undefined) rpcArgs.defaultCertificateBundlePaths = defaultCertificateBundlePaths;
+        if (defaultCertificateDirectoryPaths !== undefined) rpcArgs.defaultCertificateDirectoryPaths = defaultCertificateDirectoryPaths;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withContainerCertificatePaths',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Overrides container certificate bundle and directory paths used for trust configuration */
+    withContainerCertificatePaths(options?: WithContainerCertificatePathsOptions): MongoExpressContainerResourcePromise {
+        const customCertificatesDestination = options?.customCertificatesDestination;
+        const defaultCertificateBundlePaths = options?.defaultCertificateBundlePaths;
+        const defaultCertificateDirectoryPaths = options?.defaultCertificateDirectoryPaths;
+        return new MongoExpressContainerResourcePromise(this._withContainerCertificatePathsInternal(customCertificatesDestination, defaultCertificateBundlePaths, defaultCertificateDirectoryPaths));
+    }
+
+    /** @internal */
+    private async _withEndpointProxySupportInternal(proxyEnabled: boolean): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, proxyEnabled };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withEndpointProxySupport',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures endpoint proxy support */
+    withEndpointProxySupport(proxyEnabled: boolean): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withEndpointProxySupportInternal(proxyEnabled));
+    }
+
+    /** @internal */
+    private async _withDockerfileBaseImageInternal(buildImage?: string, runtimeImage?: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (buildImage !== undefined) rpcArgs.buildImage = buildImage;
+        if (runtimeImage !== undefined) rpcArgs.runtimeImage = runtimeImage;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withDockerfileBaseImage',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the base image for a Dockerfile build */
+    withDockerfileBaseImage(options?: WithDockerfileBaseImageOptions): MongoExpressContainerResourcePromise {
+        const buildImage = options?.buildImage;
+        const runtimeImage = options?.runtimeImage;
+        return new MongoExpressContainerResourcePromise(this._withDockerfileBaseImageInternal(buildImage, runtimeImage));
+    }
+
+    /** @internal */
+    private async _withContainerNetworkAliasInternal(alias: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, alias };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withContainerNetworkAlias',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a network alias for the container */
+    withContainerNetworkAlias(alias: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withContainerNetworkAliasInternal(alias));
+    }
+
+    /** @internal */
+    private async _withMcpServerInternal(path?: string, endpointName?: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (path !== undefined) rpcArgs.path = path;
+        if (endpointName !== undefined) rpcArgs.endpointName = endpointName;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withMcpServer',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures an MCP server endpoint on the resource */
+    withMcpServer(options?: WithMcpServerOptions): MongoExpressContainerResourcePromise {
+        const path = options?.path;
+        const endpointName = options?.endpointName;
+        return new MongoExpressContainerResourcePromise(this._withMcpServerInternal(path, endpointName));
+    }
+
+    /** @internal */
+    private async _withOtlpExporterInternal(): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withOtlpExporter',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures OTLP telemetry export */
+    withOtlpExporter(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withOtlpExporterInternal());
+    }
+
+    /** @internal */
+    private async _withOtlpExporterProtocolInternal(protocol: OtlpProtocol): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, protocol };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withOtlpExporterProtocol',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures OTLP telemetry export with specific protocol */
+    withOtlpExporterProtocol(protocol: OtlpProtocol): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withOtlpExporterProtocolInternal(protocol));
+    }
+
+    /** @internal */
+    private async _publishAsConnectionStringInternal(): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/publishAsConnectionString',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Publishes the resource as a connection string */
+    publishAsConnectionString(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._publishAsConnectionStringInternal());
+    }
+
+    /** @internal */
+    private async _withRequiredCommandInternal(command: string, helpLink?: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, command };
+        if (helpLink !== undefined) rpcArgs.helpLink = helpLink;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withRequiredCommand',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a required command dependency */
+    withRequiredCommand(command: string, options?: WithRequiredCommandOptions): MongoExpressContainerResourcePromise {
+        const helpLink = options?.helpLink;
+        return new MongoExpressContainerResourcePromise(this._withRequiredCommandInternal(command, helpLink));
+    }
+
+    /** @internal */
+    private async _withEnvironmentCallbackInternal(callback: (arg: EnvironmentCallbackContext) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as EnvironmentCallbackContextHandle;
+            const arg = new EnvironmentCallbackContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withEnvironmentCallback',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets environment variables via callback */
+    withEnvironmentCallback(callback: (arg: EnvironmentCallbackContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withEnvironmentCallbackInternal(callback));
+    }
+
+    /** @internal */
+    private async _withEnvironmentEndpointInternal(name: string, endpointReference: EndpointReference): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, endpointReference };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withEnvironmentEndpoint',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets an environment variable from an endpoint reference */
+    withEnvironmentEndpoint(name: string, endpointReference: EndpointReference): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withEnvironmentEndpointInternal(name, endpointReference));
+    }
+
+    /** @internal */
+    private async _withEnvironmentInternal(name: string, value: string | ReferenceExpression | EndpointReference | ParameterResource | ResourceWithConnectionString): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, value };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withEnvironment',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets an environment variable on the resource */
+    withEnvironment(name: string, value: string | ReferenceExpression | EndpointReference | ParameterResource | ResourceWithConnectionString): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withEnvironmentInternal(name, value));
+    }
+
+    /** @internal */
+    private async _withEnvironmentParameterInternal(name: string, parameter: ParameterResource): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, parameter };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withEnvironmentParameter',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets an environment variable from a parameter resource */
+    withEnvironmentParameter(name: string, parameter: ParameterResource): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withEnvironmentParameterInternal(name, parameter));
+    }
+
+    /** @internal */
+    private async _withEnvironmentConnectionStringInternal(envVarName: string, resource: ResourceBuilderBase): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, envVarName, resource };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withEnvironmentConnectionString',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets an environment variable from a connection string resource */
+    withEnvironmentConnectionString(envVarName: string, resource: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withEnvironmentConnectionStringInternal(envVarName, resource));
+    }
+
+    /** @internal */
+    private async _withArgsInternal(args: string[]): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, args };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withArgs',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds arguments */
+    withArgs(args: string[]): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withArgsInternal(args));
+    }
+
+    /** @internal */
+    private async _withArgsCallbackInternal(callback: (obj: CommandLineArgsCallbackContext) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const objHandle = wrapIfHandle(objData) as CommandLineArgsCallbackContextHandle;
+            const obj = new CommandLineArgsCallbackContext(objHandle, this._client);
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withArgsCallback',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets command-line arguments via callback */
+    withArgsCallback(callback: (obj: CommandLineArgsCallbackContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withArgsCallbackInternal(callback));
+    }
+
+    /** @internal */
+    private async _withArgsCallbackAsyncInternal(callback: (arg: CommandLineArgsCallbackContext) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as CommandLineArgsCallbackContextHandle;
+            const arg = new CommandLineArgsCallbackContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withArgsCallbackAsync',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets command-line arguments via async callback */
+    withArgsCallbackAsync(callback: (arg: CommandLineArgsCallbackContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withArgsCallbackAsyncInternal(callback));
+    }
+
+    /** @internal */
+    private async _withReferenceEnvironmentInternal(options: ReferenceEnvironmentInjectionOptions): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, options };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withReferenceEnvironment',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures which reference values are injected into environment variables */
+    withReferenceEnvironment(options: ReferenceEnvironmentInjectionOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withReferenceEnvironmentInternal(options));
+    }
+
+    /** @internal */
+    private async _withReferenceInternal(source: ResourceBuilderBase, connectionName?: string, optional?: boolean, name?: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, source };
+        if (connectionName !== undefined) rpcArgs.connectionName = connectionName;
+        if (optional !== undefined) rpcArgs.optional = optional;
+        if (name !== undefined) rpcArgs.name = name;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withReference',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a reference to another resource */
+    withReference(source: ResourceBuilderBase, options?: WithReferenceOptions): MongoExpressContainerResourcePromise {
+        const connectionName = options?.connectionName;
+        const optional = options?.optional;
+        const name = options?.name;
+        return new MongoExpressContainerResourcePromise(this._withReferenceInternal(source, connectionName, optional, name));
+    }
+
+    /** @internal */
+    private async _withReferenceUriInternal(name: string, uri: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, uri };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withReferenceUri',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a reference to a URI */
+    withReferenceUri(name: string, uri: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withReferenceUriInternal(name, uri));
+    }
+
+    /** @internal */
+    private async _withReferenceExternalServiceInternal(externalService: ExternalServiceResource): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, externalService };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withReferenceExternalService',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a reference to an external service */
+    withReferenceExternalService(externalService: ExternalServiceResource): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withReferenceExternalServiceInternal(externalService));
+    }
+
+    /** @internal */
+    private async _withReferenceEndpointInternal(endpointReference: EndpointReference): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, endpointReference };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withReferenceEndpoint',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a reference to an endpoint */
+    withReferenceEndpoint(endpointReference: EndpointReference): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withReferenceEndpointInternal(endpointReference));
+    }
+
+    /** @internal */
+    private async _withEndpointInternal(port?: number, targetPort?: number, scheme?: string, name?: string, env?: string, isProxied?: boolean, isExternal?: boolean, protocol?: ProtocolType): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (port !== undefined) rpcArgs.port = port;
+        if (targetPort !== undefined) rpcArgs.targetPort = targetPort;
+        if (scheme !== undefined) rpcArgs.scheme = scheme;
+        if (name !== undefined) rpcArgs.name = name;
+        if (env !== undefined) rpcArgs.env = env;
+        if (isProxied !== undefined) rpcArgs.isProxied = isProxied;
+        if (isExternal !== undefined) rpcArgs.isExternal = isExternal;
+        if (protocol !== undefined) rpcArgs.protocol = protocol;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withEndpoint',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a network endpoint */
+    withEndpoint(options?: WithEndpointOptions): MongoExpressContainerResourcePromise {
+        const port = options?.port;
+        const targetPort = options?.targetPort;
+        const scheme = options?.scheme;
+        const name = options?.name;
+        const env = options?.env;
+        const isProxied = options?.isProxied;
+        const isExternal = options?.isExternal;
+        const protocol = options?.protocol;
+        return new MongoExpressContainerResourcePromise(this._withEndpointInternal(port, targetPort, scheme, name, env, isProxied, isExternal, protocol));
+    }
+
+    /** @internal */
+    private async _withHttpEndpointInternal(port?: number, targetPort?: number, name?: string, env?: string, isProxied?: boolean): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (port !== undefined) rpcArgs.port = port;
+        if (targetPort !== undefined) rpcArgs.targetPort = targetPort;
+        if (name !== undefined) rpcArgs.name = name;
+        if (env !== undefined) rpcArgs.env = env;
+        if (isProxied !== undefined) rpcArgs.isProxied = isProxied;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withHttpEndpoint',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds an HTTP endpoint */
+    withHttpEndpoint(options?: WithHttpEndpointOptions): MongoExpressContainerResourcePromise {
+        const port = options?.port;
+        const targetPort = options?.targetPort;
+        const name = options?.name;
+        const env = options?.env;
+        const isProxied = options?.isProxied;
+        return new MongoExpressContainerResourcePromise(this._withHttpEndpointInternal(port, targetPort, name, env, isProxied));
+    }
+
+    /** @internal */
+    private async _withHttpsEndpointInternal(port?: number, targetPort?: number, name?: string, env?: string, isProxied?: boolean): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (port !== undefined) rpcArgs.port = port;
+        if (targetPort !== undefined) rpcArgs.targetPort = targetPort;
+        if (name !== undefined) rpcArgs.name = name;
+        if (env !== undefined) rpcArgs.env = env;
+        if (isProxied !== undefined) rpcArgs.isProxied = isProxied;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withHttpsEndpoint',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds an HTTPS endpoint */
+    withHttpsEndpoint(options?: WithHttpsEndpointOptions): MongoExpressContainerResourcePromise {
+        const port = options?.port;
+        const targetPort = options?.targetPort;
+        const name = options?.name;
+        const env = options?.env;
+        const isProxied = options?.isProxied;
+        return new MongoExpressContainerResourcePromise(this._withHttpsEndpointInternal(port, targetPort, name, env, isProxied));
+    }
+
+    /** @internal */
+    private async _withExternalHttpEndpointsInternal(): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withExternalHttpEndpoints',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Makes HTTP endpoints externally accessible */
+    withExternalHttpEndpoints(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withExternalHttpEndpointsInternal());
+    }
+
+    /** Gets an endpoint reference */
+    async getEndpoint(name: string): Promise<EndpointReference> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name };
+        return await this._client.invokeCapability<EndpointReference>(
+            'Aspire.Hosting/getEndpoint',
+            rpcArgs
+        );
+    }
+
+    /** @internal */
+    private async _asHttp2ServiceInternal(): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/asHttp2Service',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures resource for HTTP/2 */
+    asHttp2Service(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._asHttp2ServiceInternal());
+    }
+
+    /** @internal */
+    private async _withUrlsCallbackInternal(callback: (obj: ResourceUrlsCallbackContext) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const objHandle = wrapIfHandle(objData) as ResourceUrlsCallbackContextHandle;
+            const obj = new ResourceUrlsCallbackContext(objHandle, this._client);
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withUrlsCallback',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Customizes displayed URLs via callback */
+    withUrlsCallback(callback: (obj: ResourceUrlsCallbackContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withUrlsCallbackInternal(callback));
+    }
+
+    /** @internal */
+    private async _withUrlsCallbackAsyncInternal(callback: (arg: ResourceUrlsCallbackContext) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceUrlsCallbackContextHandle;
+            const arg = new ResourceUrlsCallbackContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withUrlsCallbackAsync',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Customizes displayed URLs via async callback */
+    withUrlsCallbackAsync(callback: (arg: ResourceUrlsCallbackContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withUrlsCallbackAsyncInternal(callback));
+    }
+
+    /** @internal */
+    private async _withUrlInternal(url: string, displayText?: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, url };
+        if (displayText !== undefined) rpcArgs.displayText = displayText;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withUrl',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds or modifies displayed URLs */
+    withUrl(url: string, options?: WithUrlOptions): MongoExpressContainerResourcePromise {
+        const displayText = options?.displayText;
+        return new MongoExpressContainerResourcePromise(this._withUrlInternal(url, displayText));
+    }
+
+    /** @internal */
+    private async _withUrlExpressionInternal(url: ReferenceExpression, displayText?: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, url };
+        if (displayText !== undefined) rpcArgs.displayText = displayText;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withUrlExpression',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a URL using a reference expression */
+    withUrlExpression(url: ReferenceExpression, options?: WithUrlExpressionOptions): MongoExpressContainerResourcePromise {
+        const displayText = options?.displayText;
+        return new MongoExpressContainerResourcePromise(this._withUrlExpressionInternal(url, displayText));
+    }
+
+    /** @internal */
+    private async _withUrlForEndpointInternal(endpointName: string, callback: (obj: ResourceUrlAnnotation) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const obj = wrapIfHandle(objData) as ResourceUrlAnnotation;
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, endpointName, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withUrlForEndpoint',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Customizes the URL for a specific endpoint via callback */
+    withUrlForEndpoint(endpointName: string, callback: (obj: ResourceUrlAnnotation) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withUrlForEndpointInternal(endpointName, callback));
+    }
+
+    /** @internal */
+    private async _withUrlForEndpointFactoryInternal(endpointName: string, callback: (arg: EndpointReference) => Promise<ResourceUrlAnnotation>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as EndpointReferenceHandle;
+            const arg = new EndpointReference(argHandle, this._client);
+            return await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, endpointName, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withUrlForEndpointFactory',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a URL for a specific endpoint via factory callback */
+    withUrlForEndpointFactory(endpointName: string, callback: (arg: EndpointReference) => Promise<ResourceUrlAnnotation>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withUrlForEndpointFactoryInternal(endpointName, callback));
+    }
+
+    /** @internal */
+    private async _excludeFromManifestInternal(): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/excludeFromManifest',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Excludes the resource from the deployment manifest */
+    excludeFromManifest(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._excludeFromManifestInternal());
+    }
+
+    /** @internal */
+    private async _waitForInternal(dependency: ResourceBuilderBase): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, dependency };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/waitForResource',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Waits for another resource to be ready */
+    waitFor(dependency: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._waitForInternal(dependency));
+    }
+
+    /** @internal */
+    private async _waitForWithBehaviorInternal(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, dependency, waitBehavior };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/waitForWithBehavior',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Waits for another resource with specific behavior */
+    waitForWithBehavior(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._waitForWithBehaviorInternal(dependency, waitBehavior));
+    }
+
+    /** @internal */
+    private async _waitForStartInternal(dependency: ResourceBuilderBase): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, dependency };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/waitForResourceStart',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Waits for another resource to start */
+    waitForStart(dependency: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._waitForStartInternal(dependency));
+    }
+
+    /** @internal */
+    private async _waitForStartWithBehaviorInternal(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, dependency, waitBehavior };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/waitForStartWithBehavior',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Waits for another resource to start with specific behavior */
+    waitForStartWithBehavior(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._waitForStartWithBehaviorInternal(dependency, waitBehavior));
+    }
+
+    /** @internal */
+    private async _withExplicitStartInternal(): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withExplicitStart',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Prevents resource from starting automatically */
+    withExplicitStart(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withExplicitStartInternal());
+    }
+
+    /** @internal */
+    private async _waitForCompletionInternal(dependency: ResourceBuilderBase, exitCode?: number): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, dependency };
+        if (exitCode !== undefined) rpcArgs.exitCode = exitCode;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/waitForResourceCompletion',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Waits for resource completion */
+    waitForCompletion(dependency: ResourceBuilderBase, options?: WaitForCompletionOptions): MongoExpressContainerResourcePromise {
+        const exitCode = options?.exitCode;
+        return new MongoExpressContainerResourcePromise(this._waitForCompletionInternal(dependency, exitCode));
+    }
+
+    /** @internal */
+    private async _withHealthCheckInternal(key: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, key };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withHealthCheck',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a health check by key */
+    withHealthCheck(key: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withHealthCheckInternal(key));
+    }
+
+    /** @internal */
+    private async _withHttpHealthCheckInternal(path?: string, statusCode?: number, endpointName?: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (path !== undefined) rpcArgs.path = path;
+        if (statusCode !== undefined) rpcArgs.statusCode = statusCode;
+        if (endpointName !== undefined) rpcArgs.endpointName = endpointName;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withHttpHealthCheck',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds an HTTP health check */
+    withHttpHealthCheck(options?: WithHttpHealthCheckOptions): MongoExpressContainerResourcePromise {
+        const path = options?.path;
+        const statusCode = options?.statusCode;
+        const endpointName = options?.endpointName;
+        return new MongoExpressContainerResourcePromise(this._withHttpHealthCheckInternal(path, statusCode, endpointName));
+    }
+
+    /** @internal */
+    private async _withCommandInternal(name: string, displayName: string, executeCommand: (arg: ExecuteCommandContext) => Promise<ExecuteCommandResult>, commandOptions?: CommandOptions): Promise<MongoExpressContainerResource> {
+        const executeCommandId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ExecuteCommandContextHandle;
+            const arg = new ExecuteCommandContext(argHandle, this._client);
+            return await executeCommand(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, name, displayName, executeCommand: executeCommandId };
+        if (commandOptions !== undefined) rpcArgs.commandOptions = commandOptions;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withCommand',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a resource command */
+    withCommand(name: string, displayName: string, executeCommand: (arg: ExecuteCommandContext) => Promise<ExecuteCommandResult>, options?: WithCommandOptions): MongoExpressContainerResourcePromise {
+        const commandOptions = options?.commandOptions;
+        return new MongoExpressContainerResourcePromise(this._withCommandInternal(name, displayName, executeCommand, commandOptions));
+    }
+
+    /** @internal */
+    private async _withDeveloperCertificateTrustInternal(trust: boolean): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, trust };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withDeveloperCertificateTrust',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures developer certificate trust */
+    withDeveloperCertificateTrust(trust: boolean): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withDeveloperCertificateTrustInternal(trust));
+    }
+
+    /** @internal */
+    private async _withCertificateTrustScopeInternal(scope: CertificateTrustScope): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, scope };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withCertificateTrustScope',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the certificate trust scope */
+    withCertificateTrustScope(scope: CertificateTrustScope): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withCertificateTrustScopeInternal(scope));
+    }
+
+    /** @internal */
+    private async _withHttpsDeveloperCertificateInternal(password?: ParameterResource): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (password !== undefined) rpcArgs.password = password;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withParameterHttpsDeveloperCertificate',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures HTTPS with a developer certificate */
+    withHttpsDeveloperCertificate(options?: WithHttpsDeveloperCertificateOptions): MongoExpressContainerResourcePromise {
+        const password = options?.password;
+        return new MongoExpressContainerResourcePromise(this._withHttpsDeveloperCertificateInternal(password));
+    }
+
+    /** @internal */
+    private async _withoutHttpsCertificateInternal(): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withoutHttpsCertificate',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Removes HTTPS certificate configuration */
+    withoutHttpsCertificate(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withoutHttpsCertificateInternal());
+    }
+
+    /** @internal */
+    private async _withRelationshipInternal(resourceBuilder: ResourceBuilderBase, type: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, resourceBuilder, type };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withBuilderRelationship',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a relationship to another resource */
+    withRelationship(resourceBuilder: ResourceBuilderBase, type: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withRelationshipInternal(resourceBuilder, type));
+    }
+
+    /** @internal */
+    private async _withParentRelationshipInternal(parent: ResourceBuilderBase): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, parent };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withBuilderParentRelationship',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the parent relationship */
+    withParentRelationship(parent: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withParentRelationshipInternal(parent));
+    }
+
+    /** @internal */
+    private async _withChildRelationshipInternal(child: ResourceBuilderBase): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, child };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withBuilderChildRelationship',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets a child relationship */
+    withChildRelationship(child: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withChildRelationshipInternal(child));
+    }
+
+    /** @internal */
+    private async _withIconNameInternal(iconName: string, iconVariant?: IconVariant): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, iconName };
+        if (iconVariant !== undefined) rpcArgs.iconVariant = iconVariant;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withIconName',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the icon for the resource */
+    withIconName(iconName: string, options?: WithIconNameOptions): MongoExpressContainerResourcePromise {
+        const iconVariant = options?.iconVariant;
+        return new MongoExpressContainerResourcePromise(this._withIconNameInternal(iconName, iconVariant));
+    }
+
+    /** @internal */
+    private async _withHttpProbeInternal(probeType: ProbeType, path?: string, initialDelaySeconds?: number, periodSeconds?: number, timeoutSeconds?: number, failureThreshold?: number, successThreshold?: number, endpointName?: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, probeType };
+        if (path !== undefined) rpcArgs.path = path;
+        if (initialDelaySeconds !== undefined) rpcArgs.initialDelaySeconds = initialDelaySeconds;
+        if (periodSeconds !== undefined) rpcArgs.periodSeconds = periodSeconds;
+        if (timeoutSeconds !== undefined) rpcArgs.timeoutSeconds = timeoutSeconds;
+        if (failureThreshold !== undefined) rpcArgs.failureThreshold = failureThreshold;
+        if (successThreshold !== undefined) rpcArgs.successThreshold = successThreshold;
+        if (endpointName !== undefined) rpcArgs.endpointName = endpointName;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withHttpProbe',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds an HTTP health probe to the resource */
+    withHttpProbe(probeType: ProbeType, options?: WithHttpProbeOptions): MongoExpressContainerResourcePromise {
+        const path = options?.path;
+        const initialDelaySeconds = options?.initialDelaySeconds;
+        const periodSeconds = options?.periodSeconds;
+        const timeoutSeconds = options?.timeoutSeconds;
+        const failureThreshold = options?.failureThreshold;
+        const successThreshold = options?.successThreshold;
+        const endpointName = options?.endpointName;
+        return new MongoExpressContainerResourcePromise(this._withHttpProbeInternal(probeType, path, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold, successThreshold, endpointName));
+    }
+
+    /** @internal */
+    private async _excludeFromMcpInternal(): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/excludeFromMcp',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Excludes the resource from MCP server exposure */
+    excludeFromMcp(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._excludeFromMcpInternal());
+    }
+
+    /** @internal */
+    private async _withRemoteImageNameInternal(remoteImageName: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, remoteImageName };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withRemoteImageName',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the remote image name for publishing */
+    withRemoteImageName(remoteImageName: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withRemoteImageNameInternal(remoteImageName));
+    }
+
+    /** @internal */
+    private async _withRemoteImageTagInternal(remoteImageTag: string): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, remoteImageTag };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withRemoteImageTag',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the remote image tag for publishing */
+    withRemoteImageTag(remoteImageTag: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withRemoteImageTagInternal(remoteImageTag));
+    }
+
+    /** @internal */
+    private async _withPipelineStepFactoryInternal(stepName: string, callback: (arg: PipelineStepContext) => Promise<void>, dependsOn?: string[], requiredBy?: string[], tags?: string[], description?: string): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as PipelineStepContextHandle;
+            const arg = new PipelineStepContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, stepName, callback: callbackId };
+        if (dependsOn !== undefined) rpcArgs.dependsOn = dependsOn;
+        if (requiredBy !== undefined) rpcArgs.requiredBy = requiredBy;
+        if (tags !== undefined) rpcArgs.tags = tags;
+        if (description !== undefined) rpcArgs.description = description;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withPipelineStepFactory',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a pipeline step to the resource */
+    withPipelineStepFactory(stepName: string, callback: (arg: PipelineStepContext) => Promise<void>, options?: WithPipelineStepFactoryOptions): MongoExpressContainerResourcePromise {
+        const dependsOn = options?.dependsOn;
+        const requiredBy = options?.requiredBy;
+        const tags = options?.tags;
+        const description = options?.description;
+        return new MongoExpressContainerResourcePromise(this._withPipelineStepFactoryInternal(stepName, callback, dependsOn, requiredBy, tags, description));
+    }
+
+    /** @internal */
+    private async _withPipelineConfigurationAsyncInternal(callback: (arg: PipelineConfigurationContext) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as PipelineConfigurationContextHandle;
+            const arg = new PipelineConfigurationContext(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withPipelineConfigurationAsync',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures pipeline step dependencies via an async callback */
+    withPipelineConfigurationAsync(callback: (arg: PipelineConfigurationContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withPipelineConfigurationAsyncInternal(callback));
+    }
+
+    /** @internal */
+    private async _withPipelineConfigurationInternal(callback: (obj: PipelineConfigurationContext) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (objData: unknown) => {
+            const objHandle = wrapIfHandle(objData) as PipelineConfigurationContextHandle;
+            const obj = new PipelineConfigurationContext(objHandle, this._client);
+            await callback(obj);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withPipelineConfiguration',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Configures pipeline step dependencies via a callback */
+    withPipelineConfiguration(callback: (obj: PipelineConfigurationContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._withPipelineConfigurationInternal(callback));
+    }
+
+    /** @internal */
+    private async _withVolumeInternal(target: string, name?: string, isReadOnly?: boolean): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { resource: this._handle, target };
+        if (name !== undefined) rpcArgs.name = name;
+        if (isReadOnly !== undefined) rpcArgs.isReadOnly = isReadOnly;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/withVolume',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Adds a volume */
+    withVolume(target: string, options?: WithVolumeOptions): MongoExpressContainerResourcePromise {
+        const name = options?.name;
+        const isReadOnly = options?.isReadOnly;
+        return new MongoExpressContainerResourcePromise(this._withVolumeInternal(target, name, isReadOnly));
+    }
+
+    /** Gets the resource name */
+    async getResourceName(): Promise<string> {
+        const rpcArgs: Record<string, unknown> = { resource: this._handle };
+        return await this._client.invokeCapability<string>(
+            'Aspire.Hosting/getResourceName',
+            rpcArgs
+        );
+    }
+
+    /** @internal */
+    private async _onBeforeResourceStartedInternal(callback: (arg: BeforeResourceStartedEvent) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as BeforeResourceStartedEventHandle;
+            const arg = new BeforeResourceStartedEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/onBeforeResourceStarted',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Subscribes to the BeforeResourceStarted event */
+    onBeforeResourceStarted(callback: (arg: BeforeResourceStartedEvent) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._onBeforeResourceStartedInternal(callback));
+    }
+
+    /** @internal */
+    private async _onResourceStoppedInternal(callback: (arg: ResourceStoppedEvent) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceStoppedEventHandle;
+            const arg = new ResourceStoppedEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/onResourceStopped',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Subscribes to the ResourceStopped event */
+    onResourceStopped(callback: (arg: ResourceStoppedEvent) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._onResourceStoppedInternal(callback));
+    }
+
+    /** @internal */
+    private async _onInitializeResourceInternal(callback: (arg: InitializeResourceEvent) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as InitializeResourceEventHandle;
+            const arg = new InitializeResourceEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/onInitializeResource',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Subscribes to the InitializeResource event */
+    onInitializeResource(callback: (arg: InitializeResourceEvent) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._onInitializeResourceInternal(callback));
+    }
+
+    /** @internal */
+    private async _onResourceEndpointsAllocatedInternal(callback: (arg: ResourceEndpointsAllocatedEvent) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceEndpointsAllocatedEventHandle;
+            const arg = new ResourceEndpointsAllocatedEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/onResourceEndpointsAllocated',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Subscribes to the ResourceEndpointsAllocated event */
+    onResourceEndpointsAllocated(callback: (arg: ResourceEndpointsAllocatedEvent) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._onResourceEndpointsAllocatedInternal(callback));
+    }
+
+    /** @internal */
+    private async _onResourceReadyInternal(callback: (arg: ResourceReadyEvent) => Promise<void>): Promise<MongoExpressContainerResource> {
+        const callbackId = registerCallback(async (argData: unknown) => {
+            const argHandle = wrapIfHandle(argData) as ResourceReadyEventHandle;
+            const arg = new ResourceReadyEvent(argHandle, this._client);
+            await callback(arg);
+        });
+        const rpcArgs: Record<string, unknown> = { builder: this._handle, callback: callbackId };
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting/onResourceReady',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Subscribes to the ResourceReady event */
+    onResourceReady(callback: (arg: ResourceReadyEvent) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._onResourceReadyInternal(callback));
+    }
+
+    /** @internal */
+    private async _withHostPortInternal(port?: number): Promise<MongoExpressContainerResource> {
+        const rpcArgs: Record<string, unknown> = { builder: this._handle };
+        if (port !== undefined) rpcArgs.port = port;
+        const result = await this._client.invokeCapability<MongoExpressContainerResourceHandle>(
+            'Aspire.Hosting.MongoDB/withHostPort',
+            rpcArgs
+        );
+        return new MongoExpressContainerResource(result, this._client);
+    }
+
+    /** Sets the host port for the Mongo Express resource */
+    withHostPort(options?: WithHostPortOptions): MongoExpressContainerResourcePromise {
+        const port = options?.port;
+        return new MongoExpressContainerResourcePromise(this._withHostPortInternal(port));
+    }
+
+}
+
+/**
+ * Thenable wrapper for MongoExpressContainerResource that enables fluent chaining.
+ * @example
+ * await builder.addSomething().withX().withY();
+ */
+export class MongoExpressContainerResourcePromise implements PromiseLike<MongoExpressContainerResource> {
+    constructor(private _promise: Promise<MongoExpressContainerResource>) {}
+
+    then<TResult1 = MongoExpressContainerResource, TResult2 = never>(
+        onfulfilled?: ((value: MongoExpressContainerResource) => TResult1 | PromiseLike<TResult1>) | null,
+        onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+    ): PromiseLike<TResult1 | TResult2> {
+        return this._promise.then(onfulfilled, onrejected);
+    }
+
+    /** Configures a resource to use a container registry */
+    withContainerRegistry(registry: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withContainerRegistry(registry)));
+    }
+
+    /** Adds a bind mount */
+    withBindMount(source: string, target: string, options?: WithBindMountOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withBindMount(source, target, options)));
+    }
+
+    /** Sets the container entrypoint */
+    withEntrypoint(entrypoint: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withEntrypoint(entrypoint)));
+    }
+
+    /** Sets the container image tag */
+    withImageTag(tag: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withImageTag(tag)));
+    }
+
+    /** Sets the container image registry */
+    withImageRegistry(registry: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withImageRegistry(registry)));
+    }
+
+    /** Sets the container image */
+    withImage(image: string, options?: WithImageOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withImage(image, options)));
+    }
+
+    /** Sets the image SHA256 digest */
+    withImageSHA256(sha256: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withImageSHA256(sha256)));
+    }
+
+    /** Adds runtime arguments for the container */
+    withContainerRuntimeArgs(args: string[]): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withContainerRuntimeArgs(args)));
+    }
+
+    /** Sets the lifetime behavior of the container resource */
+    withLifetime(lifetime: ContainerLifetime): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withLifetime(lifetime)));
+    }
+
+    /** Sets the container image pull policy */
+    withImagePullPolicy(pullPolicy: ImagePullPolicy): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withImagePullPolicy(pullPolicy)));
+    }
+
+    /** Configures the resource to be published as a container */
+    publishAsContainer(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.publishAsContainer()));
+    }
+
+    /** Configures the resource to use a Dockerfile */
+    withDockerfile(contextPath: string, options?: WithDockerfileOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withDockerfile(contextPath, options)));
+    }
+
+    /** Sets the container name */
+    withContainerName(name: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withContainerName(name)));
+    }
+
+    /** Adds a build argument from a string value or parameter resource */
+    withBuildArg(name: string, value: string | ParameterResource): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withBuildArg(name, value)));
+    }
+
+    /** Adds a build secret from a parameter resource */
+    withBuildSecret(name: string, value: ParameterResource): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withBuildSecret(name, value)));
+    }
+
+    /** Overrides container certificate bundle and directory paths used for trust configuration */
+    withContainerCertificatePaths(options?: WithContainerCertificatePathsOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withContainerCertificatePaths(options)));
+    }
+
+    /** Configures endpoint proxy support */
+    withEndpointProxySupport(proxyEnabled: boolean): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withEndpointProxySupport(proxyEnabled)));
+    }
+
+    /** Sets the base image for a Dockerfile build */
+    withDockerfileBaseImage(options?: WithDockerfileBaseImageOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withDockerfileBaseImage(options)));
+    }
+
+    /** Adds a network alias for the container */
+    withContainerNetworkAlias(alias: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withContainerNetworkAlias(alias)));
+    }
+
+    /** Configures an MCP server endpoint on the resource */
+    withMcpServer(options?: WithMcpServerOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withMcpServer(options)));
+    }
+
+    /** Configures OTLP telemetry export */
+    withOtlpExporter(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withOtlpExporter()));
+    }
+
+    /** Configures OTLP telemetry export with specific protocol */
+    withOtlpExporterProtocol(protocol: OtlpProtocol): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withOtlpExporterProtocol(protocol)));
+    }
+
+    /** Publishes the resource as a connection string */
+    publishAsConnectionString(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.publishAsConnectionString()));
+    }
+
+    /** Adds a required command dependency */
+    withRequiredCommand(command: string, options?: WithRequiredCommandOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withRequiredCommand(command, options)));
+    }
+
+    /** Sets environment variables via callback */
+    withEnvironmentCallback(callback: (arg: EnvironmentCallbackContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withEnvironmentCallback(callback)));
+    }
+
+    /** Sets an environment variable from an endpoint reference */
+    withEnvironmentEndpoint(name: string, endpointReference: EndpointReference): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withEnvironmentEndpoint(name, endpointReference)));
+    }
+
+    /** Sets an environment variable on the resource */
+    withEnvironment(name: string, value: string | ReferenceExpression | EndpointReference | ParameterResource | ResourceWithConnectionString): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withEnvironment(name, value)));
+    }
+
+    /** Sets an environment variable from a parameter resource */
+    withEnvironmentParameter(name: string, parameter: ParameterResource): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withEnvironmentParameter(name, parameter)));
+    }
+
+    /** Sets an environment variable from a connection string resource */
+    withEnvironmentConnectionString(envVarName: string, resource: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withEnvironmentConnectionString(envVarName, resource)));
+    }
+
+    /** Adds arguments */
+    withArgs(args: string[]): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withArgs(args)));
+    }
+
+    /** Sets command-line arguments via callback */
+    withArgsCallback(callback: (obj: CommandLineArgsCallbackContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withArgsCallback(callback)));
+    }
+
+    /** Sets command-line arguments via async callback */
+    withArgsCallbackAsync(callback: (arg: CommandLineArgsCallbackContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withArgsCallbackAsync(callback)));
+    }
+
+    /** Configures which reference values are injected into environment variables */
+    withReferenceEnvironment(options: ReferenceEnvironmentInjectionOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withReferenceEnvironment(options)));
+    }
+
+    /** Adds a reference to another resource */
+    withReference(source: ResourceBuilderBase, options?: WithReferenceOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withReference(source, options)));
+    }
+
+    /** Adds a reference to a URI */
+    withReferenceUri(name: string, uri: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withReferenceUri(name, uri)));
+    }
+
+    /** Adds a reference to an external service */
+    withReferenceExternalService(externalService: ExternalServiceResource): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withReferenceExternalService(externalService)));
+    }
+
+    /** Adds a reference to an endpoint */
+    withReferenceEndpoint(endpointReference: EndpointReference): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withReferenceEndpoint(endpointReference)));
+    }
+
+    /** Adds a network endpoint */
+    withEndpoint(options?: WithEndpointOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withEndpoint(options)));
+    }
+
+    /** Adds an HTTP endpoint */
+    withHttpEndpoint(options?: WithHttpEndpointOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withHttpEndpoint(options)));
+    }
+
+    /** Adds an HTTPS endpoint */
+    withHttpsEndpoint(options?: WithHttpsEndpointOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withHttpsEndpoint(options)));
+    }
+
+    /** Makes HTTP endpoints externally accessible */
+    withExternalHttpEndpoints(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withExternalHttpEndpoints()));
+    }
+
+    /** Gets an endpoint reference */
+    getEndpoint(name: string): Promise<EndpointReference> {
+        return this._promise.then(obj => obj.getEndpoint(name));
+    }
+
+    /** Configures resource for HTTP/2 */
+    asHttp2Service(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.asHttp2Service()));
+    }
+
+    /** Customizes displayed URLs via callback */
+    withUrlsCallback(callback: (obj: ResourceUrlsCallbackContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withUrlsCallback(callback)));
+    }
+
+    /** Customizes displayed URLs via async callback */
+    withUrlsCallbackAsync(callback: (arg: ResourceUrlsCallbackContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withUrlsCallbackAsync(callback)));
+    }
+
+    /** Adds or modifies displayed URLs */
+    withUrl(url: string, options?: WithUrlOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withUrl(url, options)));
+    }
+
+    /** Adds a URL using a reference expression */
+    withUrlExpression(url: ReferenceExpression, options?: WithUrlExpressionOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withUrlExpression(url, options)));
+    }
+
+    /** Customizes the URL for a specific endpoint via callback */
+    withUrlForEndpoint(endpointName: string, callback: (obj: ResourceUrlAnnotation) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withUrlForEndpoint(endpointName, callback)));
+    }
+
+    /** Adds a URL for a specific endpoint via factory callback */
+    withUrlForEndpointFactory(endpointName: string, callback: (arg: EndpointReference) => Promise<ResourceUrlAnnotation>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withUrlForEndpointFactory(endpointName, callback)));
+    }
+
+    /** Excludes the resource from the deployment manifest */
+    excludeFromManifest(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.excludeFromManifest()));
+    }
+
+    /** Waits for another resource to be ready */
+    waitFor(dependency: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.waitFor(dependency)));
+    }
+
+    /** Waits for another resource with specific behavior */
+    waitForWithBehavior(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.waitForWithBehavior(dependency, waitBehavior)));
+    }
+
+    /** Waits for another resource to start */
+    waitForStart(dependency: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.waitForStart(dependency)));
+    }
+
+    /** Waits for another resource to start with specific behavior */
+    waitForStartWithBehavior(dependency: ResourceBuilderBase, waitBehavior: WaitBehavior): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.waitForStartWithBehavior(dependency, waitBehavior)));
+    }
+
+    /** Prevents resource from starting automatically */
+    withExplicitStart(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withExplicitStart()));
+    }
+
+    /** Waits for resource completion */
+    waitForCompletion(dependency: ResourceBuilderBase, options?: WaitForCompletionOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.waitForCompletion(dependency, options)));
+    }
+
+    /** Adds a health check by key */
+    withHealthCheck(key: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withHealthCheck(key)));
+    }
+
+    /** Adds an HTTP health check */
+    withHttpHealthCheck(options?: WithHttpHealthCheckOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withHttpHealthCheck(options)));
+    }
+
+    /** Adds a resource command */
+    withCommand(name: string, displayName: string, executeCommand: (arg: ExecuteCommandContext) => Promise<ExecuteCommandResult>, options?: WithCommandOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withCommand(name, displayName, executeCommand, options)));
+    }
+
+    /** Configures developer certificate trust */
+    withDeveloperCertificateTrust(trust: boolean): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withDeveloperCertificateTrust(trust)));
+    }
+
+    /** Sets the certificate trust scope */
+    withCertificateTrustScope(scope: CertificateTrustScope): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withCertificateTrustScope(scope)));
+    }
+
+    /** Configures HTTPS with a developer certificate */
+    withHttpsDeveloperCertificate(options?: WithHttpsDeveloperCertificateOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withHttpsDeveloperCertificate(options)));
+    }
+
+    /** Removes HTTPS certificate configuration */
+    withoutHttpsCertificate(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withoutHttpsCertificate()));
+    }
+
+    /** Adds a relationship to another resource */
+    withRelationship(resourceBuilder: ResourceBuilderBase, type: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withRelationship(resourceBuilder, type)));
+    }
+
+    /** Sets the parent relationship */
+    withParentRelationship(parent: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withParentRelationship(parent)));
+    }
+
+    /** Sets a child relationship */
+    withChildRelationship(child: ResourceBuilderBase): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withChildRelationship(child)));
+    }
+
+    /** Sets the icon for the resource */
+    withIconName(iconName: string, options?: WithIconNameOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withIconName(iconName, options)));
+    }
+
+    /** Adds an HTTP health probe to the resource */
+    withHttpProbe(probeType: ProbeType, options?: WithHttpProbeOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withHttpProbe(probeType, options)));
+    }
+
+    /** Excludes the resource from MCP server exposure */
+    excludeFromMcp(): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.excludeFromMcp()));
+    }
+
+    /** Sets the remote image name for publishing */
+    withRemoteImageName(remoteImageName: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withRemoteImageName(remoteImageName)));
+    }
+
+    /** Sets the remote image tag for publishing */
+    withRemoteImageTag(remoteImageTag: string): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withRemoteImageTag(remoteImageTag)));
+    }
+
+    /** Adds a pipeline step to the resource */
+    withPipelineStepFactory(stepName: string, callback: (arg: PipelineStepContext) => Promise<void>, options?: WithPipelineStepFactoryOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withPipelineStepFactory(stepName, callback, options)));
+    }
+
+    /** Configures pipeline step dependencies via an async callback */
+    withPipelineConfigurationAsync(callback: (arg: PipelineConfigurationContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withPipelineConfigurationAsync(callback)));
+    }
+
+    /** Configures pipeline step dependencies via a callback */
+    withPipelineConfiguration(callback: (obj: PipelineConfigurationContext) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withPipelineConfiguration(callback)));
+    }
+
+    /** Adds a volume */
+    withVolume(target: string, options?: WithVolumeOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withVolume(target, options)));
+    }
+
+    /** Gets the resource name */
+    getResourceName(): Promise<string> {
+        return this._promise.then(obj => obj.getResourceName());
+    }
+
+    /** Subscribes to the BeforeResourceStarted event */
+    onBeforeResourceStarted(callback: (arg: BeforeResourceStartedEvent) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.onBeforeResourceStarted(callback)));
+    }
+
+    /** Subscribes to the ResourceStopped event */
+    onResourceStopped(callback: (arg: ResourceStoppedEvent) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.onResourceStopped(callback)));
+    }
+
+    /** Subscribes to the InitializeResource event */
+    onInitializeResource(callback: (arg: InitializeResourceEvent) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.onInitializeResource(callback)));
+    }
+
+    /** Subscribes to the ResourceEndpointsAllocated event */
+    onResourceEndpointsAllocated(callback: (arg: ResourceEndpointsAllocatedEvent) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.onResourceEndpointsAllocated(callback)));
+    }
+
+    /** Subscribes to the ResourceReady event */
+    onResourceReady(callback: (arg: ResourceReadyEvent) => Promise<void>): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.onResourceReady(callback)));
+    }
+
+    /** Sets the host port for the Mongo Express resource */
+    withHostPort(options?: WithHostPortOptions): MongoExpressContainerResourcePromise {
+        return new MongoExpressContainerResourcePromise(this._promise.then(obj => obj.withHostPort(options)));
+    }
+
+}
+
+// ============================================================================
 // NodeAppResource
 // ============================================================================
 
@@ -14559,7 +19429,7 @@ export class NodeAppResource extends ResourceBuilderBase<NodeAppResourceHandle> 
         super(handle, client);
     }
 
-    /** Gets the Command property */
+    /** Gets the command associated with this executable resource. */
     command = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -14569,7 +19439,7 @@ export class NodeAppResource extends ResourceBuilderBase<NodeAppResourceHandle> 
         },
     };
 
-    /** Gets the WorkingDirectory property */
+    /** Gets the working directory for the executable resource. */
     workingDirectory = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -14579,7 +19449,7 @@ export class NodeAppResource extends ResourceBuilderBase<NodeAppResourceHandle> 
         },
     };
 
-    /** Gets the Name property */
+    /** Gets the name of the resource. */
     name = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -18459,7 +23329,7 @@ export class ViteAppResource extends ResourceBuilderBase<ViteAppResourceHandle> 
         super(handle, client);
     }
 
-    /** Gets the Command property */
+    /** Gets the command associated with this executable resource. */
     command = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -18469,7 +23339,7 @@ export class ViteAppResource extends ResourceBuilderBase<ViteAppResourceHandle> 
         },
     };
 
-    /** Gets the WorkingDirectory property */
+    /** Gets the working directory for the executable resource. */
     workingDirectory = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -18479,7 +23349,7 @@ export class ViteAppResource extends ResourceBuilderBase<ViteAppResourceHandle> 
         },
     };
 
-    /** Gets the Name property */
+    /** Gets the name of the resource. */
     name = {
         get: async (): Promise<string> => {
             return await this._client.invokeCapability<string>(
@@ -22147,6 +27017,7 @@ registerHandleWrapper('Aspire.Hosting/Aspire.Hosting.ApplicationModel.ResourceSt
 registerHandleWrapper('Aspire.Hosting/Aspire.Hosting.ApplicationModel.ResourceUrlsCallbackContext', (handle, client) => new ResourceUrlsCallbackContext(handle as ResourceUrlsCallbackContextHandle, client));
 registerHandleWrapper('Aspire.Hosting/Aspire.Hosting.ApplicationModel.UpdateCommandStateContext', (handle, client) => new UpdateCommandStateContext(handle as UpdateCommandStateContextHandle, client));
 registerHandleWrapper('Microsoft.Extensions.Configuration.Abstractions/Microsoft.Extensions.Configuration.IConfiguration', (handle, client) => new Configuration(handle as IConfigurationHandle, client));
+registerHandleWrapper('Microsoft.Extensions.Configuration.Abstractions/Microsoft.Extensions.Configuration.IConfigurationSection', (handle, client) => new ConfigurationSection(handle as IConfigurationSectionHandle, client));
 registerHandleWrapper('Aspire.Hosting/Aspire.Hosting.IDistributedApplicationBuilder', (handle, client) => new DistributedApplicationBuilder(handle as IDistributedApplicationBuilderHandle, client));
 registerHandleWrapper('Aspire.Hosting/Aspire.Hosting.Eventing.IDistributedApplicationEventing', (handle, client) => new DistributedApplicationEventing(handle as IDistributedApplicationEventingHandle, client));
 registerHandleWrapper('Microsoft.Extensions.Hosting.Abstractions/Microsoft.Extensions.Hosting.IHostEnvironment', (handle, client) => new HostEnvironment(handle as IHostEnvironmentHandle, client));
@@ -22164,6 +27035,9 @@ registerHandleWrapper('Aspire.Hosting/Aspire.Hosting.ApplicationModel.DotnetTool
 registerHandleWrapper('Aspire.Hosting/Aspire.Hosting.ApplicationModel.ExecutableResource', (handle, client) => new ExecutableResource(handle as ExecutableResourceHandle, client));
 registerHandleWrapper('Aspire.Hosting/Aspire.Hosting.ExternalServiceResource', (handle, client) => new ExternalServiceResource(handle as ExternalServiceResourceHandle, client));
 registerHandleWrapper('Aspire.Hosting.JavaScript/Aspire.Hosting.JavaScript.JavaScriptAppResource', (handle, client) => new JavaScriptAppResource(handle as JavaScriptAppResourceHandle, client));
+registerHandleWrapper('Aspire.Hosting.MongoDB/Aspire.Hosting.ApplicationModel.MongoDBDatabaseResource', (handle, client) => new MongoDBDatabaseResource(handle as MongoDBDatabaseResourceHandle, client));
+registerHandleWrapper('Aspire.Hosting.MongoDB/Aspire.Hosting.ApplicationModel.MongoDBServerResource', (handle, client) => new MongoDBServerResource(handle as MongoDBServerResourceHandle, client));
+registerHandleWrapper('Aspire.Hosting.MongoDB/Aspire.Hosting.MongoDB.MongoExpressContainerResource', (handle, client) => new MongoExpressContainerResource(handle as MongoExpressContainerResourceHandle, client));
 registerHandleWrapper('Aspire.Hosting.JavaScript/Aspire.Hosting.JavaScript.NodeAppResource', (handle, client) => new NodeAppResource(handle as NodeAppResourceHandle, client));
 registerHandleWrapper('Aspire.Hosting/Aspire.Hosting.ApplicationModel.ParameterResource', (handle, client) => new ParameterResource(handle as ParameterResourceHandle, client));
 registerHandleWrapper('Aspire.Hosting/Aspire.Hosting.ApplicationModel.ProjectResource', (handle, client) => new ProjectResource(handle as ProjectResourceHandle, client));

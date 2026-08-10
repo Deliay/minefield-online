@@ -1,24 +1,33 @@
+import { User } from './db.js';
+
 export interface Session {
-  sessionId: string;
+  username: string;
+  displayName: string;
   socketId: string;
   score: number;
   createdAt: number;
 }
 
 export interface Ranking {
-  sessionId: string;
+  username: string;
+  displayName: string;
   score: number;
   isCurrentPlayer: boolean;
 }
 
 const sessions = new Map<string, Session>();
 
-export function createSession(socketId: string): Session {
-  const sessionId = crypto.randomUUID();
+export function createSession(
+  username: string,
+  displayName: string,
+  socketId: string,
+  score: number
+): Session {
   const session: Session = {
-    sessionId,
+    username,
+    displayName,
     socketId,
-    score: 0,
+    score,
     createdAt: Date.now(),
   };
   sessions.set(socketId, session);
@@ -33,10 +42,46 @@ export function deleteSession(socketId: string): void {
   sessions.delete(socketId);
 }
 
-export function updateScore(socketId: string, delta: number): Session | undefined {
+export async function updateScore(
+  socketId: string,
+  delta: number
+): Promise<Session | null> {
   const session = sessions.get(socketId);
-  if (!session) return undefined;
-  session.score += delta;
+  if (!session) return null;
+
+  const updated = await User.findOneAndUpdate(
+    { username: session.username },
+    { $inc: { score: delta } },
+    { new: true }
+  ).collation({ locale: 'en', strength: 2 });
+
+  if (!updated) {
+    console.warn(`[score] 写库失败，跳过广播: username=${session.username}`);
+    return null;
+  }
+  session.score = updated.score;
+  session.displayName = updated.displayName;
+  return session;
+}
+
+export async function updateDisplayName(
+  socketId: string,
+  name: string
+): Promise<Session | null> {
+  const session = sessions.get(socketId);
+  if (!session) return null;
+
+  const updated = await User.findOneAndUpdate(
+    { username: session.username },
+    { $set: { displayName: name } },
+    { new: true }
+  ).collation({ locale: 'en', strength: 2 });
+
+  if (!updated) {
+    console.warn(`[setName] 写库失败: username=${session.username}`);
+    return null;
+  }
+  session.displayName = updated.displayName;
   return session;
 }
 
@@ -46,8 +91,9 @@ export function getLeaderboard(currentSocketId?: string): Ranking[] {
     if (b.score !== a.score) return b.score - a.score;
     return a.createdAt - b.createdAt;
   });
-  return sorted.map(s => ({
-    sessionId: s.sessionId.slice(0, 6),
+  return sorted.map((s) => ({
+    username: s.username,
+    displayName: s.displayName,
     score: s.score,
     isCurrentPlayer: s.socketId === currentSocketId,
   }));

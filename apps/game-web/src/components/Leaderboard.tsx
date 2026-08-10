@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { socketService, Ranking } from '../services/socket';
+import { socketService } from '../services/socket';
+import type { Ranking } from '../services/socket';
 
 export function Leaderboard() {
   const [rankings, setRankings] = useState<Ranking[]>([]);
@@ -17,7 +18,7 @@ export function Leaderboard() {
     });
   }, []);
 
-  const currentSessionId = socketService.getSessionId();
+  const user = socketService.getUser();
   const displayRankings = rankings.filter((r) => !r.isCurrentPlayer);
 
   return (
@@ -41,7 +42,7 @@ export function Leaderboard() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {displayRankings.map((ranking, index) => (
           <div
-            key={ranking.sessionId}
+            key={ranking.username}
             style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -51,7 +52,9 @@ export function Leaderboard() {
             }}
           >
             <span style={{ color: '#888' }}>#{index + 1}</span>
-            <span style={{ color: '#aaa' }}>{ranking.sessionId.slice(0, 6)}</span>
+            <span style={{ color: '#aaa' }}>
+              {ranking.displayName || ranking.username}
+            </span>
             <span style={{ fontWeight: 'bold' }}>{ranking.score}</span>
           </div>
         ))}
@@ -68,7 +71,7 @@ export function Leaderboard() {
       >
         <span style={{ color: '#4a4' }}>You:</span>
         <span style={{ fontSize: 18, fontWeight: 'bold', color: '#4a4' }}>
-          {currentSessionId?.slice(0, 6)} - {currentPlayerScore}
+          {user?.displayName || user?.username} - {currentPlayerScore}
         </span>
       </div>
     </div>

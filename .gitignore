@@ -7,3 +7,5 @@ dist/
 __pycache__/
 *.pyc
 test-results/
+infra/local-dev/.aspire/
+infra/local-dev/.modules/

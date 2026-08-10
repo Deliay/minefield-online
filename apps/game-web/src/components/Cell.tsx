@@ -1,5 +1,6 @@
-import { memo } from 'react'
-import { Rect, Text, Line } from 'react-konva'
+import Konva from 'konva'
+import { memo, useEffect, useRef } from 'react'
+import { Rect, Text, Line, Group } from 'react-konva'
 
 interface CellProps {
   col: number
@@ -25,10 +26,24 @@ export const Cell = memo(function Cell({ col, row, cellSize, type, isMine, numbe
   const x = col * cellSize
   const y = row * cellSize
   const id = `${col}-${row}`
-
+  const flagRef = useRef<Konva.Text>(null);
+  const rectRef = useRef<Konva.Rect>(null);
+  const numRef = useRef<Konva.Text>(null);
+  useEffect(() => {
+    if (flagRef.current) {
+      flagRef.current.cache();
+    }
+    if (rectRef.current) {
+      rectRef.current.cache();
+    }
+    if (numRef.current) {
+      numRef.current.cache();
+    }
+  }, []);
   if (type === 'flag') {
     return (
       <Text
+        ref={flagRef}
         id={id}
         x={x}
         y={y}
@@ -39,40 +54,40 @@ export const Cell = memo(function Cell({ col, row, cellSize, type, isMine, numbe
         align="center"
         verticalAlign="middle"
         perfectDrawEnabled={false}
+        listening={false} 
       />
     )
   }
 
   if (type === 'revealed') {
     return (
-      <Rect
-        id={id}
-        x={x}
-        y={y}
-        width={cellSize}
-        height={cellSize}
-        fill={isMine ? '#ff0000' : '#ccc'}
-        perfectDrawEnabled={false}
-      />
-    )
-  }
-
-  if (type === 'number' && number !== undefined && number > 0) {
-    return (
-      <Text
-        id={id}
-        x={x}
-        y={y}
-        width={cellSize}
-        height={cellSize}
-        text={String(number)}
-        fontSize={20}
-        fontStyle="bold"
-        fill={numberColors[number] || '#000'}
-        align="center"
-        verticalAlign="middle"
-        perfectDrawEnabled={false}
-      />
+      <Group>
+        <Rect
+          id={id}
+          x={x}
+          y={y}
+          width={cellSize}
+          height={cellSize}
+          fill={isMine ? '#ff0000' : '#ccc'}
+          perfectDrawEnabled={false}
+        />
+        {typeof number !== 'undefined' && number > 0 ?
+          <Text
+            id={id}
+            x={x}
+            y={y}
+            width={cellSize}
+            height={cellSize}
+            text={String(number)}
+            fontSize={20}
+            fontStyle="bold"
+            fill={numberColors[number] || '#000'}
+            align="center"
+            verticalAlign="middle"
+            perfectDrawEnabled={false}
+            listening={false} 
+          /> : null}
+      </Group>
     )
   }
 
@@ -87,7 +102,13 @@ interface GridLineProps {
 }
 
 export const GridLine = memo(function GridLine({ x1, y1, x2, y2 }: GridLineProps) {
-  return <Line points={[x1, y1, x2, y2]} stroke="#333" strokeWidth={2} perfectDrawEnabled={false} />
+  const lineRef = useRef<Konva.Line>(null);
+  useEffect(() => {
+    if (lineRef.current) {
+      lineRef.current.cache();
+    }
+  }, []);
+  return <Line key={`${x1}-${x2}-${y1}-${y2}`} listening={false} points={[x1, y1, x2, y2]} stroke="#333" strokeWidth={2} perfectDrawEnabled={false} />
 })
 
 interface PointerRectProps {
@@ -107,6 +128,7 @@ export const PointerRect = memo(function PointerRect({ x, y, cellSize }: Pointer
       stroke="#fff"
       strokeWidth={2}
       perfectDrawEnabled={false}
+      listening={false} 
     />
   )
 })

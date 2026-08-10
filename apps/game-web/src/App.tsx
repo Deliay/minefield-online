@@ -1,10 +1,11 @@
-import { Stage, FastLayer, Text } from 'react-konva'
+import { Stage, Text, Layer } from 'react-konva'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Konva from 'konva'
 import { socketService } from './services/socket'
 import { Leaderboard } from './components/Leaderboard'
 import { NameModal } from './components/NameModal'
 import { Cell, GridLine, PointerRect } from './components/Cell'
+import { useImmer } from 'use-immer'
 
 const CELL_SIZE = 40
 const COLS = 1200
@@ -18,11 +19,9 @@ function App() {
   const stageRef = useRef<Konva.Stage>(null)
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
   const pointerPosRef = useRef(pointerPos)
-  pointerPosRef.current = pointerPos
-  const [isDraggingEnabled] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
-  const [flaggedCells, setFlaggedCells] = useState<Set<string>>(new Set())
-  const [revealedCells, setRevealedCells] = useState<Map<string, { isMine: boolean; number: number }>>(new Map())
+  const [flaggedCells, updateFlaggedCells] = useImmer<{ [x: string]: { col: number, row: number } }>({})
+  const [revealedCells, updateRevealedCells] = useImmer<{ [x: string]: { col: number, row: number, isMine?: boolean; number?: number } }>({})
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
   const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
@@ -43,33 +42,39 @@ function App() {
     return lines
   })
 
-  const cellRenders = useMemo(() => {
-    const revealed: React.ReactNode[] = []
-    const numbers: React.ReactNode[] = []
-    console.log('memo updated')
-    for (const key of flaggedCells) {
-      const [col, row] = key.split(',').map(Number)
-      revealed.push(<Cell key={key} col={col} row={row} cellSize={CELL_SIZE} type='flag' />)
+  const flagCellNodes = useMemo(() => {
+    const flagNodes: React.ReactNode[] = []
+    for (const key of Object.keys(flaggedCells)) {
+      const cell = flaggedCells[key];
+
+      flagNodes.push(<Cell key={key} col={cell.col} row={cell.row} cellSize={CELL_SIZE} type='flag' />)
     }
-    
 
-    for (const [key, cell] of revealedCells.entries()) {
-      const [col, row] = key.split(',').map(Number)
+    return flagNodes
+  }, [flaggedCells])
 
-      revealed.push(<Cell 
-        key={key} 
-        col={col} 
-        row={row} 
-        cellSize={CELL_SIZE} 
+  const revealedCellNodes = useMemo(() => {
+    const revealed: React.ReactNode[] = []
+
+
+    for (const key of Object.keys(revealedCells)) {
+      const cell = revealedCells[key];
+
+      revealed.push(<Cell
+        key={key}
+        col={cell.col}
+        row={cell.row}
+        cellSize={CELL_SIZE}
         type='revealed'
         isMine={cell.isMine}
         number={cell.number} />)
     }
 
-    return { revealed, numbers }
-  }, [flaggedCells, revealedCells])
+    return revealed
+  }, [revealedCells])
 
   const cellKey = (col: number, row: number) => `${col},${row}`
+  const cellKeyObj = ({ col, row }: { col: number, row: number }) => `${col},${row}`
 
   const handleNameSubmit = (name: string) => {
     socketService.setPlayerName(name);
@@ -85,17 +90,17 @@ function App() {
     socketService.connect();
 
     socketService.onInit((data) => {
-      const newRevealed = new Map<string, { isMine: boolean; number: number }>();
-      for (const cell of data.revealed) {
-        newRevealed.set(cellKey(cell.col, cell.row), { isMine: cell.isMine, number: cell.number });
-      }
-      setRevealedCells(newRevealed);
+      updateRevealedCells((obj) => {
+        for (const cell of data.revealed) {
+          obj[cellKeyObj(cell)] = cell;
+        }
+      });
 
-      const newFlagged = new Set<string>();
-      for (const { col, row } of data.flagged) {
-        newFlagged.add(cellKey(col, row));
-      }
-      setFlaggedCells(newFlagged);
+      updateFlaggedCells((obj) => {
+        for (const flagData of data.flagged) {
+          obj[cellKeyObj(flagData)] = flagData;
+        }
+      })
 
       if (!socketService.hasPlayerName()) {
         setShowNameModal(true);
@@ -103,25 +108,24 @@ function App() {
     });
 
     socketService.onCellRevealed((data) => {
-      setRevealedCells((prev) => {
-        const next = new Map(prev);
-        for (const cell of data.cells) {
-          next.set(cellKey(cell.col, cell.row), { isMine: cell.isMine, number: cell.number });
+      updateRevealedCells((prev) => {
+        const key = cellKeyObj(data);
+        console.log('reveal' + key);
+        
+        if (Array.isArray(data.cells) && data.cells.length > 0) {
+          for (const cell of data.cells) {
+            const cellKey = cellKeyObj(cell);
+            if (!prev[cellKey]) prev[cellKey] = cell
+          }
         }
-        return next;
+        if (!prev[key]) prev[key] = data
       });
     });
 
     socketService.onCellFlagged((data) => {
-      setFlaggedCells((prev) => {
-        const next = new Set(prev);
-        const key = cellKey(data.col, data.row);
-        if (data.isFlagged) {
-          next.add(key);
-        } else {
-          next.delete(key);
-        }
-        return next;
+      updateFlaggedCells((prev) => {
+        const key = cellKeyObj(data);
+        if (!prev[key]) prev[key] = data
       });
     });
 
@@ -246,10 +250,13 @@ function App() {
         const row = Math.floor(absY / CELL_SIZE)
         if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
           const key = cellKey(col, row)
-          const revealed = revealedCells.get(key)
-          if (revealed && !revealed.isMine && revealed.number > 0) {
+          const revealed = revealedCells[key]
+          const hasRevealed = !!revealed;
+          if (hasRevealed && !revealed.isMine && Number(revealed.number) > 0) {
             socketService.chord(col, row)
-          } else if (!revealedCells.has(key) && !flaggedCells.has(key)) {
+            console.log('chord' + col + ',' + row);
+            
+          } else if (!hasRevealed && !flaggedCells[key]) {
             socketService.reveal(col, row)
           }
         }
@@ -299,21 +306,22 @@ function App() {
       />
       <Stage
         ref={stageRef}
-        width={window.innerWidth}
-        height={window.innerHeight}
-        draggable={isDraggingEnabled}
+        width={dimensions.width}
+        height={dimensions.height}
+        draggable={true}
         style={{ cursor: isDragging ? 'grab' : 'default' }}
         onMouseMove={handleMouseMove}
         onContextMenu={handleContextMenu}
         onClick={handleClick}
       >
-        <FastLayer listening={false}>
+        <Layer listening={false}>
           {gridLines}
-        </FastLayer>
-        <FastLayer listening={false}>
-          {cellRenders.revealed}
-        </FastLayer>
-        <FastLayer listening={false}>
+        </Layer>
+        <Layer listening={false}>
+          {flagCellNodes}
+          {revealedCellNodes}
+        </Layer>
+        <Layer listening={false}>
           {pointerPos && (
             <PointerRect x={pointerPos.x} y={pointerPos.y} cellSize={CELL_SIZE} />
           )}
@@ -332,7 +340,7 @@ function App() {
               opacity={popup.opacity}
             />
           ))}
-        </FastLayer>
+        </Layer>
       </Stage>
       <button
         type="button"
@@ -350,7 +358,7 @@ function App() {
         onClick={handleMinimapClick}
         aria-label="Minimap navigation"
       >
-        {Array.from(revealedCells.entries()).map(([key, cell]) => {
+        {Object.entries(revealedCells).map(([key, cell]) => {
           const [col, row] = key.split(',').map(Number)
           return (
             <div

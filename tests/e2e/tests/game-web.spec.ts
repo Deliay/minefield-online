@@ -1,8 +1,19 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+async function registerAndLogin(page: Page) {
+  const username = `gweb_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
+  await page.goto('/');
+  await page.getByText('去注册').click();
+  await page.getByLabel('用户名').fill(username);
+  await page.getByLabel('密码').fill('secret1');
+  await page.getByLabel('确认密码').fill('secret1');
+  await page.getByText('注册并登录').click();
+  await page.waitForSelector('canvas');
+}
 
 test.describe('game-web socket integration', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await registerAndLogin(page);
     await page.waitForTimeout(1500);
   });
 

@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { getToken } from './api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -21,8 +22,15 @@ export interface CellFlaggedEvent {
   isFlagged: boolean;
 }
 
+export interface User {
+  username: string;
+  displayName: string;
+  score: number;
+}
+
 export interface InitEvent {
   sessionId: string;
+  user: User;
   revealed: RevealedCell[];
   flagged: Array<{ col: number; row: number }>;
 }
@@ -32,8 +40,13 @@ export interface ScoreUpdateEvent {
   score: number;
 }
 
+export interface ForceLogoutEvent {
+  reason: 'kicked';
+}
+
 export interface Ranking {
-  sessionId: string;
+  username: string;
+  displayName: string;
   score: number;
   isCurrentPlayer: boolean;
 }
@@ -42,26 +55,38 @@ export interface LeaderboardEvent {
   rankings: Ranking[];
 }
 
+interface Listeners {
+  onInit?: (data: InitEvent) => void;
+  onCellRevealed?: (data: CellRevealedEvent) => void;
+  onCellFlagged?: (data: CellFlaggedEvent) => void;
+  onScoreUpdate?: (data: ScoreUpdateEvent) => void;
+  onLeaderboard?: (data: LeaderboardEvent) => void;
+  onForceLogout?: (data: ForceLogoutEvent) => void;
+  onDisconnect?: () => void;
+  onLoginRequired?: () => void;
+}
+
 class SocketService {
   private socket: Socket | null = null;
-  private sessionId: string | null = null;
-  private listeners: {
-    onInit?: (data: InitEvent) => void;
-    onCellRevealed?: (data: CellRevealedEvent) => void;
-    onCellFlagged?: (data: CellFlaggedEvent) => void;
-    onScoreUpdate?: (data: ScoreUpdateEvent) => void;
-    onLeaderboard?: (data: LeaderboardEvent) => void;
-  } = {};
+  private user: User | null = null;
+  private listeners: Listeners = {};
 
-  getSessionId(): string | null {
-    return this.sessionId;
+  getUser(): User | null {
+    return this.user;
   }
 
   connect() {
     if (this.socket?.connected) return;
 
+    const token = getToken();
+    if (!token) {
+      this.listeners.onDisconnect?.();
+      return;
+    }
+
     this.socket = io(API_URL, {
       transports: ['websocket', 'polling'],
+      auth: { token },
     });
 
     this.socket.on('connect', () => {
@@ -70,10 +95,18 @@ class SocketService {
 
     this.socket.on('disconnect', () => {
       console.log('Disconnected from server');
+      this.listeners.onDisconnect?.();
+    });
+
+    this.socket.on('connect_error', (err) => {
+      console.warn('Socket connect_error:', err.message);
+      this.socket?.disconnect();
+      this.listeners.onLoginRequired?.();
+      this.listeners.onDisconnect?.();
     });
 
     this.socket.on('init', (data: InitEvent) => {
-      this.sessionId = data.sessionId;
+      this.user = data.user;
       this.listeners.onInit?.(data);
     });
 
@@ -86,11 +119,20 @@ class SocketService {
     });
 
     this.socket.on('scoreUpdate', (data: ScoreUpdateEvent) => {
+      if (this.user) this.user.score = data.score;
       this.listeners.onScoreUpdate?.(data);
+    });
+
+    this.socket.on('setNameSuccess', (data: { displayName: string }) => {
+      if (this.user) this.user.displayName = data.displayName;
     });
 
     this.socket.on('leaderboard', (data: LeaderboardEvent) => {
       this.listeners.onLeaderboard?.(data);
+    });
+
+    this.socket.on('forceLogout', (data: ForceLogoutEvent) => {
+      this.listeners.onForceLogout?.(data);
     });
   }
 
@@ -117,6 +159,22 @@ class SocketService {
 
   onLeaderboard(callback: (data: LeaderboardEvent) => void) {
     this.listeners.onLeaderboard = callback;
+  }
+
+  onForceLogout(callback: (data: ForceLogoutEvent) => void) {
+    this.listeners.onForceLogout = callback;
+  }
+
+  onDisconnect(callback: () => void) {
+    this.listeners.onDisconnect = callback;
+  }
+
+  onLoginRequired(callback: () => void) {
+    this.listeners.onLoginRequired = callback;
+  }
+
+  setName(name: string) {
+    this.socket?.emit('setName', { name });
   }
 
   reveal(col: number, row: number) {

@@ -27,7 +27,8 @@ export function Leaderboard() {
         position: 'absolute',
         top: 10,
         right: 10,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        zIndex: 1000,
+        backgroundColor: 'rgba(30, 30, 40, 0.95)',
         color: 'white',
         padding: 16,
         borderRadius: 8,
@@ -36,6 +37,8 @@ export function Leaderboard() {
         overflowY: 'auto',
         fontFamily: 'monospace',
         fontSize: 14,
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
       }}
     >
       <h3 style={{ margin: '0 0 12px 0', textAlign: 'center' }}>Leaderboard</h3>

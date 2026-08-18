@@ -1,0 +1,53 @@
+import React from 'react';
+import type { Ranking } from '../services/socket';
+import styles from './RankingCard.module.css';
+
+interface RankingCardProps {
+  rank: number;
+  ranking: Ranking;
+  isCurrentPlayer: boolean;
+}
+
+export function RankingCard({ rank, ranking, isCurrentPlayer }: RankingCardProps) {
+  const getRankClass = (rank: number) => {
+    if (rank === 1) return styles.first;
+    if (rank === 2) return styles.second;
+    if (rank === 3) return styles.third;
+    return '';
+  };
+
+  const getBadge = (rank: number) => {
+    if (rank === 1) return '🥇';
+    if (rank === 2) return '🥈';
+    if (rank === 3) return '🥉';
+    return null;
+  };
+
+  const badge = getBadge(rank);
+
+  return (
+    <div
+      className={`${styles.card} ${isCurrentPlayer ? styles.currentPlayer : ''}`}
+      data-rank={rank}
+    >
+      <div className={`${styles.rank} ${getRankClass(rank)}`}>
+        {rank}
+      </div>
+      
+      <div className={styles.playerInfo}>
+        <div className={styles.playerName}>
+          {ranking.displayName || ranking.username}
+        </div>
+        <div className={styles.playerScore}>
+          {ranking.score.toLocaleString()} points
+        </div>
+      </div>
+
+      {badge && (
+        <div className={styles.badge}>
+          {badge}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { authApi, setToken } from '../services/api';
 import type { User } from '../services/api';
+import styles from './Login.module.css';
 
 interface LoginProps {
   onAuthed: (user: User) => void;
@@ -45,130 +46,97 @@ export function Login({ onAuthed }: LoginProps) {
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: 10,
-    marginBottom: 12,
-    borderRadius: 6,
-    border: '1px solid #555',
-    background: '#111',
-    color: '#fff',
-    boxSizing: 'border-box' as const,
-  };
-
-  const buttonStyle: React.CSSProperties = {
-    width: '100%',
-    padding: 10,
-    borderRadius: 6,
-    border: 'none',
-    background: '#2d7d46',
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
-    cursor: 'pointer',
-  };
-
   return (
-    <div
-      style={{
-        height: '100vh',
-        width: '100vw',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#000',
-        color: '#fff',
-        fontFamily: 'monospace',
-      }}
-    >
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          width: 320,
-          padding: 24,
-          borderRadius: 10,
-          background: '#1a1a1a',
-          boxShadow: '0 0 20px rgba(0,0,0,0.8)',
-        }}
-      >
-        <h2 style={{ textAlign: 'center', marginTop: 0 }}>
-          {mode === 'register' ? '注册账号' : '登录'}
-        </h2>
+    <div className={styles.container}>
+      <div className={styles.backgroundDecoration}>
+        <div className={styles.decorationCircle} />
+        <div className={styles.decorationCircle} />
+        <div className={styles.decorationCircle} />
+      </div>
+      
+      <div className={styles.formCard}>
+        <div className={styles.header}>
+          <h2 className={styles.title}>
+            {mode === 'register' ? '注册账号' : '登录'}
+          </h2>
+          <p className={styles.subtitle}>
+            {mode === 'register' ? '创建新账号开始游戏' : '欢迎回来，继续你的冒险'}
+          </p>
+        </div>
 
-        <label htmlFor="login-username" style={{ display: 'block', marginBottom: 4 }}>用户名</label>
-        <input
-          id="login-username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="3-20 位字母/数字/下划线"
-          style={inputStyle}
-          autoComplete="username"
-        />
-
-        <label htmlFor="login-password" style={{ display: 'block', marginBottom: 4 }}>密码</label>
-        <input
-          id="login-password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="至少 6 位"
-          style={inputStyle}
-          autoComplete="current-password"
-        />
-
-        {mode === 'register' && (
-          <>
-            <label htmlFor="login-confirm" style={{ display: 'block', marginBottom: 4 }}>确认密码</label>
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.inputGroup}>
+            <label htmlFor="login-username" className={styles.label}>
+              用户名
+            </label>
             <input
-              id="login-confirm"
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="再次输入密码"
-              style={inputStyle}
-              autoComplete="new-password"
+              id="login-username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="3-20 位字母/数字/下划线"
+              className={styles.input}
+              autoComplete="username"
             />
-          </>
-        )}
-
-        {error && (
-          <div
-            style={{
-              color: '#ff6b6b',
-              fontSize: 13,
-              marginBottom: 12,
-              padding: 8,
-              background: 'rgba(255,0,0,0.1)',
-              borderRadius: 6,
-            }}
-          >
-            {error}
           </div>
-        )}
 
-        <button type="submit" disabled={loading} style={buttonStyle}>
-          {loading ? '处理中...' : mode === 'register' ? '注册并登录' : '登录'}
-        </button>
+          <div className={styles.inputGroup}>
+            <label htmlFor="login-password" className={styles.label}>
+              密码
+            </label>
+            <input
+              id="login-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="至少 6 位"
+              className={styles.input}
+              autoComplete="current-password"
+            />
+          </div>
 
-        <div style={{ textAlign: 'center', marginTop: 14, fontSize: 13 }}>
+          {mode === 'register' && (
+            <div className={styles.inputGroup}>
+              <label htmlFor="login-confirm" className={styles.label}>
+                确认密码
+              </label>
+              <input
+                id="login-confirm"
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="再次输入密码"
+                className={styles.input}
+                autoComplete="new-password"
+              />
+            </div>
+          )}
+
+          {error && (
+            <div className={styles.error}>
+              {error}
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            disabled={loading} 
+            className={styles.submitButton}
+          >
+            {loading ? '处理中...' : mode === 'register' ? '注册并登录' : '登录'}
+          </button>
+        </form>
+
+        <div className={styles.switchMode}>
           {mode === 'login' ? '还没有账号？' : '已有账号？'}
           <button
             type="button"
             onClick={switchMode}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#4a9eff',
-              cursor: 'pointer',
-              fontSize: 13,
-              padding: 0,
-              marginLeft: 4,
-            }}
+            className={styles.switchButton}
           >
             {mode === 'login' ? '去注册' : '去登录'}
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

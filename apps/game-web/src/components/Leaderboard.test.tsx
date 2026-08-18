@@ -1,40 +1,25 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Leaderboard } from './Leaderboard';
+import { LeaderboardPanel } from './LeaderboardPanel';
 
-vi.mock('../services/socket', async () => {
-  const actual = await vi.importActual('../services/socket');
-  return {
-    ...(actual as Record<string, unknown>),
-    socketService: {
-      getUser: vi.fn(() => ({ username: 'alice', displayName: 'Alice', score: 42 })),
-      onLeaderboard: vi.fn((cb: (d: { rankings: Ranking[] }) => void) => {
-        cb({
-          rankings: [
-            { username: 'alice', displayName: 'Alice', score: 42, isCurrentPlayer: true },
-            { username: 'bob', displayName: 'Bob', score: 10, isCurrentPlayer: false },
-          ],
-        });
-      }),
-    },
-  };
-});
+const mockRankings = [
+  { username: 'alice', displayName: 'Alice', score: 42, isCurrentPlayer: true },
+  { username: 'bob', displayName: 'Bob', score: 10, isCurrentPlayer: false },
+];
 
-import type { Ranking } from '../services/socket';
-
-describe('Leaderboard', () => {
+describe('LeaderboardPanel', () => {
   it('should render leaderboard title', () => {
-    render(<Leaderboard />);
+    render(<LeaderboardPanel rankings={mockRankings} currentUsername="alice" />);
     expect(screen.getByText('Leaderboard')).toBeDefined();
   });
 
   it('should render displayName of other players', () => {
-    render(<Leaderboard />);
+    render(<LeaderboardPanel rankings={mockRankings} currentUsername="alice" />);
     expect(screen.getByText('Bob')).toBeDefined();
   });
 
-  it('should render current player displayName near the you-label', () => {
-    render(<Leaderboard />);
-    expect(screen.getByText('Alice - 42')).toBeDefined();
+  it('should render player score', () => {
+    render(<LeaderboardPanel rankings={mockRankings} currentUsername="alice" />);
+    expect(screen.getByText('10 points')).toBeDefined();
   });
 });

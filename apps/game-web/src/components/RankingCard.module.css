@@ -1,0 +1,102 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  border: 1px solid transparent;
+  transition: all var(--duration-fast) var(--ease-in-out);
+}
+
+.card:hover {
+  background: var(--bg-tertiary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.card.currentPlayer {
+  border-color: var(--color-primary);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.rank {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  flex-shrink: 0;
+}
+
+.rank.first {
+  background: linear-gradient(135deg, #ffd700 0%, #ffec8b 100%);
+  color: var(--text-inverse);
+}
+
+.rank.second {
+  background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+  color: var(--text-inverse);
+}
+
+.rank.third {
+  background: linear-gradient(135deg, #cd7f32 0%, #daa520 100%);
+  color: var(--text-inverse);
+}
+
+.playerInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.playerName {
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-sm);
+}
+
+.playerScore {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.badge {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+}
+
+/* Animation for ranking changes */
+@keyframes rankChange {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.card.rankChanged {
+  animation: rankChange 0.3s ease-out;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+  
+  .card.rankChanged {
+    animation: none;
+  }
+}

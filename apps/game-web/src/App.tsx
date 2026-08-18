@@ -2,11 +2,13 @@ import { Stage, Text, Layer } from 'react-konva'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Konva from 'konva'
 import { socketService } from './services/socket'
-import type { User } from './services/socket'
+import type { User, Ranking } from './services/socket'
 import { getToken, clearToken } from './services/api'
-import { Leaderboard } from './components/Leaderboard'
 import { Login } from './pages/Login'
 import { Cell, GridLine, PointerRect } from './components/Cell'
+import { GameLayout } from './components/GameLayout'
+import { UserInfoCard } from './components/UserInfoCard'
+import { LeaderboardPanel } from './components/LeaderboardPanel'
 import { useImmer } from 'use-immer'
 
 const CELL_SIZE = 40
@@ -20,7 +22,6 @@ function App() {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthed, setIsAuthed] = useState<boolean>(() => Boolean(getToken()))
   const [kickNotice, setKickNotice] = useState<string | null>(null)
-  const [nameDraft, setNameDraft] = useState('')
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight })
   const stageRef = useRef<Konva.Stage>(null)
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null)
@@ -31,6 +32,9 @@ function App() {
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
   const [scorePopups, setScorePopups] = useState<Array<{ id: number; x: number; y: number; delta: number; opacity: number }>>([])
   const popupRefs = useRef<Map<number, Konva.Text>>(new Map())
+  const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number; radius: number; opacity: number }>>([])
+  const rippleRefs = useRef<Map<number, Konva.Ring>>(new Map())
+  const [rankings, setRankings] = useState<Ranking[]>([])
   const [gridLines] = useState<React.ReactNode[]>(() => {
     const lines: React.ReactNode[] = []
     const gridWidth = COLS * CELL_SIZE
@@ -77,8 +81,8 @@ function App() {
     return revealed
   }, [revealedCells])
 
-  const cellKey = (col: number, row: number) => `${col},${row}`
-  const cellKeyObj = ({ col, row }: { col: number, row: number }) => `${col},${row}`
+  const cellKey = useCallback((col: number, row: number) => `${col},${row}`, [])
+  const cellKeyObj = useCallback(({ col, row }: { col: number, row: number }) => `${col},${row}`, [])
 
   useEffect(() => {
     if (!isAuthed) return;
@@ -149,6 +153,10 @@ function App() {
       }
     });
 
+    socketService.onLeaderboard((data) => {
+      setRankings(data.rankings);
+    });
+
     socketService.onForceLogout(() => {
       clearToken();
       setUser(null);
@@ -165,7 +173,7 @@ function App() {
     return () => {
       socketService.disconnect();
     };
-  }, [isAuthed]);
+  }, [isAuthed, cellKeyObj, updateFlaggedCells, updateRevealedCells]);
 
   useEffect(() => {
     const stage = stageRef.current
@@ -251,6 +259,32 @@ function App() {
         const col = Math.floor(absX / CELL_SIZE)
         const row = Math.floor(absY / CELL_SIZE)
         if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+          // Create ripple effect
+          const rippleId = Date.now()
+          const rippleX = col * CELL_SIZE + CELL_SIZE / 2
+          const rippleY = row * CELL_SIZE + CELL_SIZE / 2
+          setRipples((prev) => [...prev, { id: rippleId, x: rippleX, y: rippleY, radius: 0, opacity: 1 }])
+          
+          setTimeout(() => {
+            const rippleNode = rippleRefs.current.get(rippleId)
+            if (rippleNode) {
+              new Konva.Tween({
+                node: rippleNode,
+                duration: 0.4,
+                innerRadius: CELL_SIZE,
+                outerRadius: CELL_SIZE,
+                opacity: 0,
+                easing: Konva.Easings.EaseOut,
+                onFinish: () => {
+                  setRipples((prev) => prev.filter((r) => r.id !== rippleId))
+                  rippleRefs.current.delete(rippleId)
+                },
+              }).play()
+            } else {
+              setRipples((prev) => prev.filter((r) => r.id !== rippleId))
+            }
+          }, 10)
+
           const key = cellKey(col, row)
           const revealed = revealedCells[key]
           const hasRevealed = !!revealed;
@@ -262,7 +296,7 @@ function App() {
         }
       }
     },
-    [revealedCells, flaggedCells]
+    [revealedCells, flaggedCells, cellKey]
   )
 
   const scaleX = MINIMAP_WIDTH / (COLS * CELL_SIZE)
@@ -302,12 +336,9 @@ function App() {
     setIsAuthed(false);
   }
 
-  const handleSetName = (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = nameDraft.trim();
+  const handleSetName = (name: string) => {
     if (!name || name.length > 20) return;
     socketService.setName(name);
-    setNameDraft('');
   }
 
   if (!isAuthed) {
@@ -321,166 +352,153 @@ function App() {
     )
   }
 
+  const sidebar = user ? (
+    <>
+      <UserInfoCard
+        user={user}
+        onSetName={handleSetName}
+        onLogout={handleLogout}
+      />
+      <LeaderboardPanel
+        rankings={rankings}
+        currentUsername={user.username}
+      />
+    </>
+  ) : undefined;
+
   return (
-    <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'black' }}>
-      <div
-        style={{
-          position: 'absolute',
-          top: 10,
-          left: 10,
-          zIndex: 10,
-          display: 'flex',
-          gap: 10,
-          alignItems: 'center',
-          background: 'rgba(0,0,0,0.8)',
-          color: '#fff',
-          padding: '8px 12px',
-          borderRadius: 8,
-          fontFamily: 'monospace',
-          fontSize: 14,
-        }}
-      >
-        <span>{user ? `${user.displayName || user.username}（${user.username}）` : '...'}</span>
-        <span style={{ color: '#4a4' }}>{user ? `Score: ${user.score}` : ''}</span>
-        <form onSubmit={handleSetName} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <label htmlFor="set-name" style={{ display: 'none' }}>
-            改名
-          </label>
-          <input
-            id="set-name"
-            value={nameDraft}
-            onChange={(e) => setNameDraft(e.target.value)}
-            placeholder="改名 (≤20)"
-            maxLength={20}
+    <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      <GameLayout user={user} sidebar={sidebar}>
+        {kickNotice && (
+          <div
             style={{
-              width: 120,
-              padding: 4,
-              borderRadius: 4,
-              border: '1px solid #555',
-              background: '#111',
-              color: '#fff',
+              position: 'absolute',
+              inset: 0,
+              zIndex: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--bg-overlay)',
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-sans)',
+            }}
+          >
+            <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 10, textAlign: 'center' }}>
+              <p>{kickNotice}</p>
+              <button
+                type="button"
+                onClick={() => setKickNotice(null)}
+                style={{ padding: '8px 16px', cursor: 'pointer' }}
+              >
+                返回登录
+              </button>
+            </div>
+          </div>
+        )}
+
+        <Stage
+          ref={stageRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          draggable={true}
+          style={{ cursor: isDragging ? 'grab' : 'default' }}
+          onMouseMove={handleMouseMove}
+          onContextMenu={handleContextMenu}
+          onClick={handleClick}
+        >
+          <Layer listening={false}>
+            {gridLines}
+          </Layer>
+          <Layer listening={false}>
+            {flagCellNodes}
+            {revealedCellNodes}
+          </Layer>
+          <Layer listening={false}>
+            {pointerPos && (
+              <PointerRect x={pointerPos.x} y={pointerPos.y} cellSize={CELL_SIZE} />
+            )}
+            {scorePopups.map((popup) => (
+              <Text
+                key={popup.id}
+                ref={(node) => {
+                  if (node) popupRefs.current.set(popup.id, node);
+                }}
+                x={popup.x}
+                y={popup.y}
+                text={popup.delta > 0 ? `+${popup.delta}` : `${popup.delta}`}
+                fontSize={24}
+                fontStyle="bold"
+                fill={popup.delta > 0 ? '#10b981' : '#ef4444'}
+                opacity={popup.opacity}
+                shadowColor={popup.delta > 0 ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)'}
+                shadowBlur={8}
+                shadowOffset={{ x: 0, y: 2 }}
+              />
+            ))}
+            {ripples.map((ripple) => (
+              <Konva.Ring
+                key={ripple.id}
+                ref={(node) => {
+                  if (node) rippleRefs.current.set(ripple.id, node);
+                }}
+                x={ripple.x}
+                y={ripple.y}
+                innerRadius={0}
+                outerRadius={0}
+                fill="transparent"
+                stroke="rgba(99, 102, 241, 0.6)"
+                strokeWidth={2}
+                opacity={ripple.opacity}
+              />
+            ))}
+          </Layer>
+        </Stage>
+        <button
+          type="button"
+          style={{
+            position: 'absolute',
+            bottom: 10,
+            right: 10,
+            width: MINIMAP_WIDTH,
+            height: MINIMAP_HEIGHT,
+            backgroundColor: '#222',
+            border: '2px solid #555',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+          onClick={handleMinimapClick}
+          aria-label="Minimap navigation"
+        >
+          {Object.entries(revealedCells).map(([key, cell]) => {
+            const [col, row] = key.split(',').map(Number)
+            return (
+              <div
+                key={key}
+                style={{
+                  position: 'absolute',
+                  left: col * CELL_SIZE * scaleX,
+                  top: row * CELL_SIZE * scaleY,
+                  width: Math.max(1, CELL_SIZE * scaleX),
+                  height: Math.max(1, CELL_SIZE * scaleY),
+                  backgroundColor: cell.isMine ? '#ff0000' : '#ccc',
+                }}
+              />
+            )
+          })}
+          <div
+            style={{
+              position: 'absolute',
+              left: viewportRect.x,
+              top: viewportRect.y,
+              width: viewportRect.width,
+              height: viewportRect.height,
+              border: '2px solid #fff',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              boxSizing: 'border-box',
             }}
           />
-          <button type="submit" style={{ padding: '4px 8px', cursor: 'pointer' }}>
-            改名
-          </button>
-        </form>
-        <button type="button" onClick={handleLogout} style={{ padding: '4px 8px', cursor: 'pointer' }}>
-          登出
         </button>
-      </div>
-
-      {kickNotice && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 20,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.7)',
-            color: '#fff',
-            fontFamily: 'monospace',
-          }}
-        >
-          <div style={{ background: '#1a1a1a', padding: 24, borderRadius: 10, textAlign: 'center' }}>
-            <p>{kickNotice}</p>
-            <button
-              type="button"
-              onClick={() => setKickNotice(null)}
-              style={{ padding: '8px 16px', cursor: 'pointer' }}
-            >
-              返回登录
-            </button>
-          </div>
-        </div>
-      )}
-
-      <Leaderboard />
-      <Stage
-        ref={stageRef}
-        width={dimensions.width}
-        height={dimensions.height}
-        draggable={true}
-        style={{ cursor: isDragging ? 'grab' : 'default' }}
-        onMouseMove={handleMouseMove}
-        onContextMenu={handleContextMenu}
-        onClick={handleClick}
-      >
-        <Layer listening={false}>
-          {gridLines}
-        </Layer>
-        <Layer listening={false}>
-          {flagCellNodes}
-          {revealedCellNodes}
-        </Layer>
-        <Layer listening={false}>
-          {pointerPos && (
-            <PointerRect x={pointerPos.x} y={pointerPos.y} cellSize={CELL_SIZE} />
-          )}
-          {scorePopups.map((popup) => (
-            <Text
-              key={popup.id}
-              ref={(node) => {
-                if (node) popupRefs.current.set(popup.id, node);
-              }}
-              x={popup.x}
-              y={popup.y}
-              text={popup.delta > 0 ? `+${popup.delta}` : `${popup.delta}`}
-              fontSize={20}
-              fontStyle="bold"
-              fill={popup.delta > 0 ? '#4f4' : '#f44'}
-              opacity={popup.opacity}
-            />
-          ))}
-        </Layer>
-      </Stage>
-      <button
-        type="button"
-        style={{
-          position: 'absolute',
-          bottom: 10,
-          right: 10,
-          width: MINIMAP_WIDTH,
-          height: MINIMAP_HEIGHT,
-          backgroundColor: '#222',
-          border: '2px solid #555',
-          cursor: 'pointer',
-          padding: 0,
-        }}
-        onClick={handleMinimapClick}
-        aria-label="Minimap navigation"
-      >
-        {Object.entries(revealedCells).map(([key, cell]) => {
-          const [col, row] = key.split(',').map(Number)
-          return (
-            <div
-              key={key}
-              style={{
-                position: 'absolute',
-                left: col * CELL_SIZE * scaleX,
-                top: row * CELL_SIZE * scaleY,
-                width: Math.max(1, CELL_SIZE * scaleX),
-                height: Math.max(1, CELL_SIZE * scaleY),
-                backgroundColor: cell.isMine ? '#ff0000' : '#ccc',
-              }}
-            />
-          )
-        })}
-        <div
-          style={{
-            position: 'absolute',
-            left: viewportRect.x,
-            top: viewportRect.y,
-            width: viewportRect.width,
-            height: viewportRect.height,
-            border: '2px solid #fff',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            boxSizing: 'border-box',
-          }}
-        />
-      </button>
+      </GameLayout>
     </div>
   )
 }

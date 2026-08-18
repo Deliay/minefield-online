@@ -1,0 +1,95 @@
+.panel {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-4);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-primary);
+  min-width: 280px;
+  max-width: 320px;
+  transition: all var(--duration-normal) var(--ease-in-out);
+  overflow: hidden;
+}
+
+.panel:hover {
+  box-shadow: var(--shadow-xl);
+  border-color: var(--border-secondary);
+}
+
+.panel.collapsed {
+  min-width: auto;
+  max-width: auto;
+  padding: var(--spacing-3);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-4);
+  cursor: pointer;
+  user-select: none;
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.title {
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+}
+
+.toggleIcon {
+  color: var(--text-secondary);
+  transition: transform var(--duration-normal) var(--ease-in-out);
+  font-size: var(--text-sm);
+}
+
+.toggleIcon.collapsed {
+  transform: rotate(-90deg);
+}
+
+.rankingsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  max-height: 400px;
+  overflow-y: auto;
+  transition: all var(--duration-normal) var(--ease-in-out);
+}
+
+.rankingsList.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.emptyState {
+  text-align: center;
+  padding: var(--spacing-6);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Scrollbar styling for rankings list */
+.rankingsList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.rankingsList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rankingsList::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: var(--radius-full);
+}
+
+.rankingsList::-webkit-scrollbar-thumb:hover {
+  background: var(--border-secondary);
+}

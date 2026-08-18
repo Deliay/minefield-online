@@ -1,17 +1,5 @@
 /* Animation Keyframes */
 
-/* Ripple Effect */
-@keyframes ripple {
-  0% {
-    transform: scale(0);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(4);
-    opacity: 0;
-  }
-}
-
 /* Pulse Animation */
 @keyframes pulse {
   0%, 100% {
@@ -22,26 +10,15 @@
   }
 }
 
-/* Bounce Animation */
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
+/* Scale Up Animation */
+@keyframes scaleUp {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
   }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-/* Shake Animation */
-@keyframes shake {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  10%, 30%, 50%, 70%, 90% {
-    transform: translateX(-5px);
-  }
-  20%, 40%, 60%, 80% {
-    transform: translateX(5px);
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
@@ -89,200 +66,8 @@
   }
 }
 
-/* Slide Left Animation */
-@keyframes slideLeft {
-  from {
-    transform: translateX(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Slide Right Animation */
-@keyframes slideRight {
-  from {
-    transform: translateX(-20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Scale Up Animation */
-@keyframes scaleUp {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Scale Down Animation */
-@keyframes scaleDown {
-  from {
-    transform: scale(1.05);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Spin Animation */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Ping Animation */
-@keyframes ping {
-  75%, 100% {
-    transform: scale(2);
-    opacity: 0;
-  }
-}
-
-/* Float Animation */
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
-/* Glow Animation */
-@keyframes glow {
-  0%, 100% {
-    box-shadow: 0 0 5px var(--color-primary);
-  }
-  50% {
-    box-shadow: 0 0 20px var(--color-primary), 0 0 30px var(--color-primary-light);
-  }
-}
-
-/* Shimmer Animation */
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-/* Animation Classes */
-.animate-ripple {
-  animation: ripple 0.6s linear infinite;
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.animate-bounce {
-  animation: bounce 1s infinite;
-}
-
-.animate-shake {
-  animation: shake 0.5s ease-in-out;
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-fade-out {
-  animation: fadeOut 0.3s ease-out;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.3s ease-out;
-}
-
-.animate-slide-down {
-  animation: slideDown 0.3s ease-out;
-}
-
-.animate-slide-left {
-  animation: slideLeft 0.3s ease-out;
-}
-
-.animate-slide-right {
-  animation: slideRight 0.3s ease-out;
-}
-
-.animate-scale-up {
-  animation: scaleUp 0.3s ease-out;
-}
-
-.animate-scale-down {
-  animation: scaleDown 0.3s ease-out;
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-.animate-ping {
-  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-.animate-glow {
-  animation: glow 2s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.1) 50%,
-    transparent 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-}
-
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
-  .animate-ripple,
-  .animate-pulse,
-  .animate-bounce,
-  .animate-shake,
-  .animate-fade-in,
-  .animate-fade-out,
-  .animate-slide-up,
-  .animate-slide-down,
-  .animate-slide-left,
-  .animate-slide-right,
-  .animate-scale-up,
-  .animate-scale-down,
-  .animate-spin,
-  .animate-ping,
-  .animate-float,
-  .animate-glow,
-  .animate-shimmer {
-    animation: none;
-  }
-  
   *,
   *::before,
   *::after {

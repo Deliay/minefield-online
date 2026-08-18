@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { User } from '../services/socket';
 import styles from './UserInfoCard.module.css';
 
@@ -11,6 +11,19 @@ interface UserInfoCardProps {
 export function UserInfoCard({ user, onSetName, onLogout }: UserInfoCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user.displayName || user.username);
+  const [isScorePulsing, setIsScorePulsing] = useState(false);
+  const prevScoreRef = useRef(user.score);
+
+  useEffect(() => {
+    if (prevScoreRef.current !== user.score) {
+      setIsScorePulsing(true);
+      const timer = setTimeout(() => {
+        setIsScorePulsing(false);
+      }, 300);
+      prevScoreRef.current = user.score;
+      return () => clearTimeout(timer);
+    }
+  }, [user.score]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +50,7 @@ export function UserInfoCard({ user, onSetName, onLogout }: UserInfoCardProps) {
           </div>
           <div className={styles.score}>
             <span>Score:</span>
-            <span className={`${styles.scoreValue} ${styles.scorePulse}`}>
+            <span className={`${styles.scoreValue} ${isScorePulsing ? styles.scorePulse : ''}`}>
               {user.score}
             </span>
           </div>

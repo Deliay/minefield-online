@@ -1,14 +1,17 @@
 import React from 'react';
 import type { Ranking } from '../services/socket';
+import { ScoreBar } from './ScoreBar';
 import styles from './RankingCard.module.css';
 
 interface RankingCardProps {
   rank: number;
   ranking: Ranking;
   isCurrentPlayer: boolean;
+  maxScore: number;
+  rankChanged?: boolean;
 }
 
-export function RankingCard({ rank, ranking, isCurrentPlayer }: RankingCardProps) {
+export function RankingCard({ rank, ranking, isCurrentPlayer, maxScore, rankChanged }: RankingCardProps) {
   const getRankClass = (rank: number) => {
     if (rank === 1) return styles.first;
     if (rank === 2) return styles.second;
@@ -27,7 +30,7 @@ export function RankingCard({ rank, ranking, isCurrentPlayer }: RankingCardProps
 
   return (
     <div
-      className={`${styles.card} ${isCurrentPlayer ? styles.currentPlayer : ''}`}
+      className={`${styles.card} ${isCurrentPlayer ? styles.currentPlayer : ''} ${rankChanged ? styles.rankChanged : ''}`}
       data-rank={rank}
     >
       <div className={`${styles.rank} ${getRankClass(rank)}`}>
@@ -38,9 +41,7 @@ export function RankingCard({ rank, ranking, isCurrentPlayer }: RankingCardProps
         <div className={styles.playerName}>
           {ranking.displayName || ranking.username}
         </div>
-        <div className={styles.playerScore}>
-          {ranking.score.toLocaleString()} points
-        </div>
+        <ScoreBar score={ranking.score} maxScore={maxScore} />
       </div>
 
       {badge && (

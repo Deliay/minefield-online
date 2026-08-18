@@ -1,14 +1,12 @@
 import React from 'react';
-import type { User } from '../services/socket';
 import styles from './GameLayout.module.css';
 
 interface GameLayoutProps {
-  user: User | null;
   children: React.ReactNode;
   sidebar?: React.ReactNode;
 }
 
-export function GameLayout({ user, children, sidebar }: GameLayoutProps) {
+export function GameLayout({ children, sidebar }: GameLayoutProps) {
   return (
     <div className={styles.container}>
       <div className={styles.background} />

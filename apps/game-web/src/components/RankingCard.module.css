@@ -61,11 +61,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: var(--text-sm);
-}
-
-.playerScore {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
+  margin-bottom: var(--spacing-1);
 }
 
 .badge {

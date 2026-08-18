@@ -368,7 +368,7 @@ function App() {
 
   return (
     <div ref={containerRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      <GameLayout user={user} sidebar={sidebar}>
+      <GameLayout sidebar={sidebar}>
         {kickNotice && (
           <div
             style={{

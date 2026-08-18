@@ -15,9 +15,9 @@ type: Permanent
 
 ### 1.2 目标
 
-- 棋盘格子升级：渐变效果、阴影层次、边框优化、交互状态
-- 数字显示优化：现代字体、颜色配色、阴影发光、大小比例
-- 地雷格子调整：柔和警示色、视觉层次、图标优化
+- 棋盘格子升级：冷淡风格渐变、阴影层次、边框优化、交互状态
+- 数字显示优化：现代字体、低饱和度冷色调配色、阴影效果、大小比例
+- 地雷格子调整：冷淡风格警示色、视觉层次、图标优化
 
 ### 1.3 范围
 
@@ -64,20 +64,34 @@ graph LR
     E --> F
 ```
 
+### 2.3 设计系统 - 冷淡风格
+
+```mermaid
+graph LR
+    A[设计 Token] --> B[格子颜色系统]
+    A --> C[数字颜色系统]
+    A --> D[阴影系统]
+    A --> E[渐变系统]
+    B --> F[Cell 组件]
+    C --> F
+    D --> F
+    E --> F
+```
+
 | 设计 Token | 变量名 | 值 | 说明 |
 |-----------|--------|-----|------|
-| 格子基础色 | `cell-base` | `#2d3748` → `#4a5568` | 深色渐变 |
-| 格子边框色 | `cell-border` | `#1a202c` | 深色边框 |
-| 已揭开背景 | `cell-revealed` | `#e2e8f0` | 浅灰色 |
-| 地雷背景 | `cell-mine` | `#fc8181` | 柔和红色 |
-| 数字1 | `num-1` | `#3182ce` | 蓝色 |
-| 数字2 | `num-2` | `#38a169` | 绿色 |
-| 数字3 | `num-3` | `#e53e3e` | 红色 |
-| 数字4 | `num-4` | `#805ad5` | 紫色 |
-| 数字5 | `num-5` | `#dd6b20` | 橙色 |
-| 数字6 | `num-6` | `#319795` | 青色 |
-| 数字7 | `num-7` | `#2d3748` | 深灰 |
-| 数字8 | `num-8` | `#718096` | 灰色 |
+| 格子基础色 | `cell-base` | `#3a4556` → `#2d3748` | 冷灰蓝渐变 |
+| 格子边框色 | `cell-border` | `#1e2a3a` | 深冷蓝边框 |
+| 已揭开背景 | `cell-revealed` | `#e8ecf0` | 冷灰白 |
+| 地雷背景 | `cell-mine` | `#90a4ae` | 冷灰蓝（警示） |
+| 数字1 | `num-1` | `#5c7a99` | 冷蓝 |
+| 数字2 | `num-2` | `#6b8e7a` | 冷绿 |
+| 数字3 | `num-3` | `#a07070` | 冷红灰 |
+| 数字4 | `num-4` | `#7a6b99` | 冷紫 |
+| 数字5 | `num-5` | `#998a6b` | 冷橙灰 |
+| 数字6 | `num-6` | `#5c8a8a` | 冷青 |
+| 数字7 | `num-7` | `#4a5568` | 深灰 |
+| 数字8 | `num-8` | `#7a8590` | 中灰 |
 
 ## 3. 组件设计
 
@@ -103,7 +117,7 @@ graph TD
 #### 组件 1: Cell - 未揭开状态
 
 ```typescript
-// 未揭开格子：渐变填充 + 边框 + 微妙阴影
+// 未揭开格子：冷淡风格渐变 + 边框 + 微妙阴影
 const unrevaledCell = (
   <Rect
     x={x}
@@ -112,8 +126,8 @@ const unrevaledCell = (
     height={cellSize}
     fillLinearGradientStartPoint={{ x: 0, y: 0 }}
     fillLinearGradientEndPoint={{ x: cellSize, y: cellSize }}
-    fillLinearGradientColorStops={[0, '#4a5568', 1, '#2d3748']}
-    stroke="#1a202c"
+    fillLinearGradientColorStops={[0, '#3a4556', 1, '#2d3748']}
+    stroke="#1e2a3a"
     strokeWidth={1}
     shadowColor="rgba(0, 0, 0, 0.3)"
     shadowBlur={2}
@@ -126,7 +140,7 @@ const unrevaledCell = (
 #### 组件 2: Cell - 已揭开状态
 
 ```typescript
-// 已揭开格子：浅色背景 + 内阴影 + 边框
+// 已揭开格子：冷灰白背景 + 内阴影 + 边框
 const revealedCell = (
   <Group>
     <Rect
@@ -134,8 +148,8 @@ const revealedCell = (
       y={y}
       width={cellSize}
       height={cellSize}
-      fill="#e2e8f0"
-      stroke="#cbd5e0"
+      fill="#e8ecf0"
+      stroke="#c8d0da"
       strokeWidth={1}
       shadowColor="rgba(0, 0, 0, 0.1)"
       shadowBlur={1}
@@ -149,7 +163,7 @@ const revealedCell = (
 #### 组件 3: Cell - 地雷状态
 
 ```typescript
-// 地雷格子：柔和红色 + 图案
+// 地雷格子：冷淡风格警示色 + 简约图标
 const mineCell = (
   <Group>
     <Rect
@@ -159,8 +173,8 @@ const mineCell = (
       height={cellSize}
       fillLinearGradientStartPoint={{ x: 0, y: 0 }}
       fillLinearGradientEndPoint={{ x: cellSize, y: cellSize }}
-      fillLinearGradientColorStops={[0, '#fc8181', 1, '#f56565']}
-      stroke="#e53e3e"
+      fillLinearGradientColorStops={[0, '#90a4ae', 1, '#78909c']}
+      stroke="#546e7a"
       strokeWidth={1}
     />
     <Text
@@ -201,34 +215,34 @@ const numberText = (
 )
 ```
 
-### 3.3 颜色系统
+### 3.3 颜色系统 - 冷淡风格
 
 ```typescript
-// 数字颜色配色方案（专业配色）
+// 数字颜色配色方案（冷淡风格，低饱和度冷色调）
 const numberColors: Record<number, string> = {
-  1: '#3182ce', // 蓝色 - 清晰
-  2: '#38a169', // 绿色 - 自然
-  3: '#e53e3e', // 红色 - 警示
-  4: '#805ad5', // 紫色 - 神秘
-  5: '#dd6b20', // 橙色 - 活力
-  6: '#319795', // 青色 - 清新
-  7: '#2d3748', // 深灰 - 稳重
-  8: '#718096', // 灰色 - 中性
+  1: '#5c7a99', // 冷蓝
+  2: '#6b8e7a', // 冷绿
+  3: '#a07070', // 冷红灰
+  4: '#7a6b99', // 冷紫
+  5: '#998a6b', // 冷橙灰
+  6: '#5c8a8a', // 冷青
+  7: '#4a5568', // 深灰
+  8: '#7a8590', // 中灰
 }
 ```
 
-### 3.4 交互状态
+### 3.4 交互状态 - 冷淡风格
 
 ```typescript
-// 格子悬停效果
+// 格子悬停效果（冷淡风格，微妙变化）
 const hoverEffect = {
-  fill: '#5a6577', // 稍亮的颜色
+  fill: '#4a5a6a', // 稍亮的冷灰蓝
   shadowBlur: 4,   // 更明显的阴影
 }
 
-// 格子按下效果
+// 格子按下效果（冷淡风格，微妙变化）
 const pressEffect = {
-  fill: '#3d4a5c', // 稍暗的颜色
+  fill: '#2a3a4a', // 稍暗的冷灰蓝
   shadowBlur: 1,   // 减少阴影
   shadowOffset: { x: 0, y: 0 }, // 阴影居中
 }
@@ -250,33 +264,33 @@ apps/game-web/src/
 └── ...
 ```
 
-### 4.2 样式常量
+### 4.2 样式常量 - 冷淡风格
 
 ```typescript
 // cell-styles.ts
 export const CELL_STYLES = {
   unrevealed: {
-    fillGradient: ['#4a5568', '#2d3748'],
-    stroke: '#1a202c',
+    fillGradient: ['#3a4556', '#2d3748'],
+    stroke: '#1e2a3a',
     shadow: { color: 'rgba(0, 0, 0, 0.3)', blur: 2, offset: { x: 1, y: 1 } },
     cornerRadius: 2,
   },
   revealed: {
-    fill: '#e2e8f0',
-    stroke: '#cbd5e0',
+    fill: '#e8ecf0',
+    stroke: '#c8d0da',
     shadow: { color: 'rgba(0, 0, 0, 0.1)', blur: 1, offset: { x: 1, y: 1 } },
   },
   mine: {
-    fillGradient: ['#fc8181', '#f56565'],
-    stroke: '#e53e3e',
+    fillGradient: ['#90a4ae', '#78909c'],
+    stroke: '#546e7a',
     icon: '💣',
   },
   hover: {
-    fill: '#5a6577',
+    fill: '#4a5a6a',
     shadowBlur: 4,
   },
   press: {
-    fill: '#3d4a5c',
+    fill: '#2a3a4a',
     shadowBlur: 1,
     shadowOffset: { x: 0, y: 0 },
   },
@@ -304,15 +318,15 @@ graph LR
 
 #### 实现点 2: Cell 组件重写
 
-- 修改 `Cell.tsx` 使用新的样式系统
-- 为未揭开格子添加渐变填充
-- 为已揭开格子添加阴影效果
-- 为地雷格子使用柔和红色
+- 修改 `Cell.tsx` 使用新的冷淡风格样式系统
+- 为未揭开格子添加冷灰蓝渐变填充
+- 为已揭开格子添加冷灰白背景和阴影效果
+- 为地雷格子使用冷灰蓝警示色
 
 #### 实现点 3: 数字样式优化
 
 - 使用 Inter 字体提升可读性
-- 优化数字颜色配色
+- 采用低饱和度冷色调数字配色
 - 添加微妙的阴影效果
 
 #### 实现点 4: 交互状态集成

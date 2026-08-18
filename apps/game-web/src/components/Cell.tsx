@@ -1,25 +1,16 @@
 import Konva from 'konva'
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Rect, Text, Line, Group } from 'react-konva'
+import { numberColors } from '../styles/number-colors'
+import { CELL_STYLES } from '../styles/cell-styles'
 
 interface CellProps {
   col: number
   row: number
   cellSize: number
-  type: 'flag' | 'revealed' | 'number'
+  type: 'flag' | 'revealed' | 'number' | 'unrevealed-bg'
   isMine?: boolean
   number?: number
-}
-
-const numberColors: Record<number, string> = {
-  1: '#0000FF',
-  2: '#008000',
-  3: '#FF0000',
-  4: '#000080',
-  5: '#800000',
-  6: '#008080',
-  7: '#000000',
-  8: '#808080',
 }
 
 export const Cell = memo(function Cell({ col, row, cellSize, type, isMine, number }: CellProps) {
@@ -29,6 +20,9 @@ export const Cell = memo(function Cell({ col, row, cellSize, type, isMine, numbe
   const flagRef = useRef<Konva.Text>(null);
   const rectRef = useRef<Konva.Rect>(null);
   const numRef = useRef<Konva.Text>(null);
+  const [isHovered, setIsHovered] = useState(false)
+  const [isPressed, setIsPressed] = useState(false)
+
   useEffect(() => {
     if (flagRef.current) {
       flagRef.current.cache();
@@ -59,33 +53,118 @@ export const Cell = memo(function Cell({ col, row, cellSize, type, isMine, numbe
     )
   }
 
-  if (type === 'revealed') {
+  if (type === 'unrevealed-bg') {
+    // 未揭开格子背景：冷淡风格渐变
+    const currentFill = isPressed
+      ? CELL_STYLES.press.fill
+      : isHovered
+        ? CELL_STYLES.hover.fill
+        : CELL_STYLES.unrevealed.fillGradient[0]
+
     return (
-      <Group>
-        <Rect
-          id={id}
-          x={x}
-          y={y}
-          width={cellSize}
-          height={cellSize}
-          fill={isMine ? '#ff0000' : '#ccc'}
-          perfectDrawEnabled={false}
-        />
-        {typeof number !== 'undefined' && number > 0 ?
+      <Rect
+        ref={rectRef}
+        id={id}
+        x={x}
+        y={y}
+        width={cellSize}
+        height={cellSize}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: cellSize, y: cellSize }}
+        fillLinearGradientColorStops={[0, currentFill, 1, CELL_STYLES.unrevealed.fillGradient[1]]}
+        stroke={CELL_STYLES.unrevealed.stroke}
+        strokeWidth={1}
+        shadowColor={CELL_STYLES.unrevealed.shadow.color}
+        shadowBlur={isPressed ? CELL_STYLES.press.shadowBlur : isHovered ? CELL_STYLES.hover.shadowBlur : CELL_STYLES.unrevealed.shadow.blur}
+        shadowOffset={isPressed ? CELL_STYLES.press.shadowOffset : CELL_STYLES.unrevealed.shadow.offset}
+        cornerRadius={CELL_STYLES.unrevealed.cornerRadius}
+        perfectDrawEnabled={false}
+        listening={true}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => {
+          setIsHovered(false)
+          setIsPressed(false)
+        }}
+        onMouseDown={() => setIsPressed(true)}
+        onMouseUp={() => setIsPressed(false)}
+      />
+    )
+  }
+
+  if (type === 'revealed') {
+    if (isMine) {
+      // 地雷格子：冷淡风格警示色
+      return (
+        <Group>
+          <Rect
+            ref={rectRef}
+            id={id}
+            x={x}
+            y={y}
+            width={cellSize}
+            height={cellSize}
+            fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+            fillLinearGradientEndPoint={{ x: cellSize, y: cellSize }}
+            fillLinearGradientColorStops={[0, CELL_STYLES.mine.fillGradient[0], 1, CELL_STYLES.mine.fillGradient[1]]}
+            stroke={CELL_STYLES.mine.stroke}
+            strokeWidth={1}
+            perfectDrawEnabled={false}
+          />
           <Text
             id={id}
             x={x}
             y={y}
             width={cellSize}
             height={cellSize}
-            text={String(number)}
+            text={CELL_STYLES.mine.icon}
             fontSize={20}
-            fontStyle="bold"
-            fill={numberColors[number] || '#000'}
             align="center"
             verticalAlign="middle"
             perfectDrawEnabled={false}
-            listening={false} 
+            listening={false}
+          />
+        </Group>
+      )
+    }
+
+    // 已揭开格子：冷灰白背景
+    return (
+      <Group>
+        <Rect
+          ref={rectRef}
+          id={id}
+          x={x}
+          y={y}
+          width={cellSize}
+          height={cellSize}
+          fill={CELL_STYLES.revealed.fill}
+          stroke={CELL_STYLES.revealed.stroke}
+          strokeWidth={1}
+          shadowColor={CELL_STYLES.revealed.shadow.color}
+          shadowBlur={CELL_STYLES.revealed.shadow.blur}
+          shadowOffset={CELL_STYLES.revealed.shadow.offset}
+          perfectDrawEnabled={false}
+        />
+        {typeof number !== 'undefined' && number > 0 ?
+          <Text
+            ref={numRef}
+            id={id}
+            x={x}
+            y={y}
+            width={cellSize}
+            height={cellSize}
+            text={String(number)}
+            fontSize={22}
+            fontFamily="Inter, sans-serif"
+            fontStyle="bold"
+            fill={numberColors[number] || '#4a5568'}
+            align="center"
+            verticalAlign="middle"
+            shadowColor="rgba(0, 0, 0, 0.2)"
+            shadowBlur={1}
+            shadowOffset={{ x: 0, y: 1 }}
+            perfectDrawEnabled={false}
+            listening={false}
           /> : null}
       </Group>
     )

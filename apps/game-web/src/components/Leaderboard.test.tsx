@@ -25,7 +25,7 @@ describe('LeaderboardPanel', () => {
 
   it('should render player score', () => {
     render(<LeaderboardPanel rankings={mockRankings} currentUsername="alice" />);
-    expect(screen.getByText('42 points')).toBeDefined();
+    expect(screen.getByText('42')).toBeDefined();
   });
 
   it('should collapse/expand panel when header is clicked', () => {

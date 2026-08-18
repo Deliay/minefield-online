@@ -8,7 +8,7 @@ interface ScoreBarProps {
 }
 
 export function ScoreBar({ score, maxScore, delta }: ScoreBarProps) {
-  const percentage = Math.min((score / maxScore) * 100, 100);
+  const percentage = maxScore > 0 ? Math.min((score / maxScore) * 100, 100) : 0;
   const isPositive = delta !== undefined && delta > 0;
   const isNegative = delta !== undefined && delta < 0;
 

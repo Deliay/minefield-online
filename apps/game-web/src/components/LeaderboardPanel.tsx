@@ -13,9 +13,19 @@ export function LeaderboardPanel({ rankings, currentUsername }: LeaderboardPanel
   const [rankChangedMap, setRankChangedMap] = useState<Map<string, boolean>>(new Map());
   const prevRankingsRef = useRef<Map<string, number>>(new Map());
   const rankingsListRef = useRef<HTMLDivElement>(null);
+  const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const sortedRankings = [...rankings].sort((a, b) => b.score - a.score);
   const maxScore = sortedRankings.length > 0 ? sortedRankings[0].score : 0;
+
+  useEffect(() => {
+    return () => {
+      for (const timeout of timeoutsRef.current.values()) {
+        clearTimeout(timeout);
+      }
+      timeoutsRef.current.clear();
+    };
+  }, []);
 
   const detectRankChanges = useCallback(() => {
     const newRankChangedMap = new Map<string, boolean>();
@@ -27,10 +37,21 @@ export function LeaderboardPanel({ rankings, currentUsername }: LeaderboardPanel
       if (oldRank !== undefined && oldRank !== newRank) {
         newRankChangedMap.set(ranking.username, true);
         
-        setTimeout(() => {
-          newRankChangedMap.set(ranking.username, false);
-          setRankChangedMap(new Map(newRankChangedMap));
-        }, 300);
+        if (timeoutsRef.current.has(ranking.username)) {
+          clearTimeout(timeoutsRef.current.get(ranking.username)!);
+        }
+        
+        timeoutsRef.current.set(
+          ranking.username,
+          setTimeout(() => {
+            setRankChangedMap((prev) => {
+              const next = new Map(prev);
+              next.set(ranking.username, false);
+              return next;
+            });
+            timeoutsRef.current.delete(ranking.username);
+          }, 300)
+        );
       }
     });
     
@@ -39,7 +60,13 @@ export function LeaderboardPanel({ rankings, currentUsername }: LeaderboardPanel
     });
     
     if (newRankChangedMap.size > 0) {
-      setRankChangedMap(new Map(newRankChangedMap));
+      setRankChangedMap((prev) => {
+        const next = new Map(prev);
+        for (const [key, value] of newRankChangedMap) {
+          next.set(key, value);
+        }
+        return next;
+      });
     }
   }, [sortedRankings]);
 

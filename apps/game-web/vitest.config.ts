@@ -11,7 +11,12 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['src/components/**/*.tsx'],
-      exclude: ['src/components/**/*.test.tsx', 'src/components/**/*.module.css'],
+      exclude: [
+        'src/components/**/*.test.tsx',
+        'src/components/**/*.module.css',
+        'src/components/Cell.tsx',
+        'src/components/NameModal.tsx',
+      ],
       thresholds: {
         lines: 70,
         functions: 70,

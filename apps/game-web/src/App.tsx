@@ -17,11 +17,10 @@ const ROWS = 640
 const MINIMAP_WIDTH = 200
 const MINIMAP_HEIGHT = Math.floor(ROWS * (MINIMAP_WIDTH / COLS))
 
-const StaticGridLayer = memo(function StaticGridLayer() {
+const gridWidth = COLS * CELL_SIZE
+const gridHeight = ROWS * CELL_SIZE
+const gridLines = (() => {
   const lines: import('react').ReactNode[] = []
-  const gridWidth = COLS * CELL_SIZE
-  const gridHeight = ROWS * CELL_SIZE
-
   for (let i = 0; i <= COLS; i++) {
     const x = i * CELL_SIZE
     lines.push(<GridLine key={`v-${i}`} x1={x} y1={0} x2={x} y2={gridHeight} />)
@@ -30,8 +29,11 @@ const StaticGridLayer = memo(function StaticGridLayer() {
     const y = i * CELL_SIZE
     lines.push(<GridLine key={`h-${i}`} x1={0} y1={y} x2={gridWidth} y2={y} />)
   }
+  return lines
+})()
 
-  return <Layer listening={false}>{lines}</Layer>
+const StaticGridLayer = memo(function StaticGridLayer() {
+  return <Layer listening={false}>{gridLines}</Layer>
 })
 
 function App() {

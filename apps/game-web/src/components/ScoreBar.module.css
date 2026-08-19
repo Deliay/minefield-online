@@ -32,7 +32,7 @@
 .progressContainer {
   width: 100%;
   height: 6px;
-  background: var(--bg-tertiary);
+  background: #1e2a3a;
   border-radius: var(--radius-full);
   overflow: hidden;
   position: relative;
@@ -46,18 +46,17 @@
 }
 
 .progressBar.positive {
-  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  background: linear-gradient(90deg, #5c7a99 0%, #7ba3c9 100%);
 }
 
 .progressBar.negative {
-  background: linear-gradient(90deg, var(--color-danger) 0%, #fca5a5 100%);
+  background: linear-gradient(90deg, #a94442 0%, #d98880 100%);
 }
 
 .progressBar.neutral {
-  background: var(--border-secondary);
+  background: #475569;
 }
 
-/* Animation for progress bar */
 @keyframes progressPulse {
   0%, 100% {
     opacity: 1;
@@ -71,7 +70,6 @@
   animation: progressPulse 0.3s ease-out;
 }
 
-/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .progressBar {
     transition: none;

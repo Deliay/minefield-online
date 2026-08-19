@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Ranking } from '../services/socket';
 import { RankingCard } from './RankingCard';
 import styles from './LeaderboardPanel.module.css';

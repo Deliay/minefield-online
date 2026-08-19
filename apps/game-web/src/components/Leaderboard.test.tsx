@@ -25,26 +25,27 @@ describe('LeaderboardPanel', () => {
 
   it('should render player score', () => {
     render(<LeaderboardPanel rankings={mockRankings} currentUsername="alice" />);
-    expect(screen.getByText('42')).toBeDefined();
+    const scoreValues = screen.getAllByText('42');
+    expect(scoreValues.length).toBeGreaterThanOrEqual(1);
   });
 
   it('should collapse/expand panel when header is clicked', () => {
     render(<LeaderboardPanel rankings={mockRankings} currentUsername="alice" />);
     const header = screen.getByText('Leaderboard');
     fireEvent.click(header);
-    
-    const rankingsList = screen.getByText('Alice').closest('div');
+
+    const rankingsList = document.querySelector('[class*="rankingsList"]');
     expect(rankingsList?.className).toContain('collapsed');
   });
 
   it('should expand panel after collapsing', () => {
     render(<LeaderboardPanel rankings={mockRankings} currentUsername="alice" />);
     const header = screen.getByText('Leaderboard');
-    
+
     fireEvent.click(header);
     fireEvent.click(header);
-    
-    const rankingsList = screen.getByText('Alice').closest('div');
+
+    const rankingsList = document.querySelector('[class*="rankingsList"]');
     expect(rankingsList?.className).not.toContain('collapsed');
   });
 

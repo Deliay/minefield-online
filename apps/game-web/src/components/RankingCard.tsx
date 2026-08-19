@@ -1,4 +1,3 @@
-import React from 'react';
 import type { Ranking } from '../services/socket';
 import { ScoreBar } from './ScoreBar';
 import styles from './RankingCard.module.css';

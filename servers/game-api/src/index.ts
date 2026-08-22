@@ -13,7 +13,7 @@ import {
   getLeaderboard,
   getSession,
 } from './session.js';
-import { findSettleableCluster, SettledMine } from './nfSettler.js';
+import { findSettleableCluster } from './nfSettler.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -154,31 +154,48 @@ io.on('connection', async (socket) => {
     const cell = minefield.getCell(col, row);
     if (!cell || cell.isMine) return;
 
-    const settleResult = findSettleableCluster(
-      minefield.getCells(),
-      minefield.getRevealedSet(),
-      minefield.getSettledSet(),
-      minefield.getCols(),
-      minefield.getRows(),
-      col,
-      row
-    );
+    const cols = minefield.getCols();
+    const rows = minefield.getRows();
+    const board = minefield.getCells();
+    const revealed = minefield.getRevealedSet();
+    const settled = minefield.getSettledSet();
 
-    if (!settleResult) return;
+    const neighbors = [
+      { col: col - 1, row: row - 1 }, { col: col, row: row - 1 }, { col: col + 1, row: row - 1 },
+      { col: col - 1, row: row },                                       { col: col + 1, row: row },
+      { col: col - 1, row: row + 1 }, { col: col, row: row + 1 }, { col: col + 1, row: row + 1 },
+    ];
 
-    for (const mine of settleResult.mines) {
-      minefield.markSettled(mine.col, mine.row);
+    const cellKey = (c: number, r: number) => c * rows + r;
+    const settledMines: Array<{ col: number; row: number }> = [];
+    let totalDelta = 0;
+
+    for (const n of neighbors) {
+      if (n.col < 0 || n.col >= cols || n.row < 0 || n.row >= rows) continue;
+      if (!board[n.row][n.col].isMine) continue;
+      if (settled.has(cellKey(n.col, n.row))) continue;
+
+      const settleResult = findSettleableCluster(board, revealed, settled, cols, rows, n.col, n.row);
+      if (!settleResult) continue;
+
+      for (const mine of settleResult.mines) {
+        minefield.markSettled(mine.col, mine.row);
+        settledMines.push(mine);
+      }
+      totalDelta += settleResult.delta;
     }
 
-    session.nfSettled += settleResult.mines.length;
+    if (settledMines.length === 0) return;
 
-    const updated = await updateScore(socket.id, settleResult.delta);
+    session.nfSettled += settledMines.length;
+
+    const updated = await updateScore(socket.id, totalDelta);
     if (updated) {
       socket.emit('nfSettled', {
         col,
         row,
-        mines: settleResult.mines,
-        delta: settleResult.delta,
+        mines: settledMines,
+        delta: totalDelta,
       });
       io.emit('scoreUpdate', { sessionId: socket.id, score: updated.score });
       broadcastLeaderboard();

@@ -222,5 +222,61 @@ describe('nfSettler', () => {
         delta: 10,
       });
     });
+
+    it('should return null when seed is a non-mine cell (simulates index.ts reveal path)', () => {
+      const board = [
+        [false, false, false],
+        [false, true, false],
+        [false, false, false],
+      ].map((row) => row.map((isMine) => ({ isMine, number: 0 })));
+
+      const revealed = new Set<number>([
+        0, 1, 2,
+        3,    5,
+        6, 7, 8,
+      ]);
+      const settled = new Set<number>();
+
+      const result = findSettleableCluster(board, revealed, settled, 3, 3, 0, 0);
+      expect(result).toBeNull();
+    });
+
+    it('should settle mine found in 8-neighborhood of revealed cell (real index.ts path)', () => {
+      const board = [
+        [false, false, false],
+        [false, true, false],
+        [false, false, false],
+      ].map((row) => row.map((isMine) => ({ isMine, number: 0 })));
+
+      const revealed = new Set<number>([
+        0, 1, 2,
+        3,    5,
+        6, 7, 8,
+      ]);
+      const settled = new Set<number>();
+
+      const neighbors = neighbors8(0, 0, 3, 3);
+      let totalDelta = 0;
+      const allMines: Array<{ col: number; row: number }> = [];
+
+      for (const n of neighbors) {
+        if (n.col < 0 || n.col >= 3 || n.row < 0 || n.row >= 3) continue;
+        if (!board[n.row][n.col].isMine) continue;
+        const cellKey = (c: number, r: number) => c * 3 + r;
+        if (settled.has(cellKey(n.col, n.row))) continue;
+
+        const result = findSettleableCluster(board, revealed, settled, 3, 3, n.col, n.row);
+        if (!result) continue;
+
+        for (const mine of result.mines) {
+          settled.add(cellKey(mine.col, mine.row));
+          allMines.push(mine);
+        }
+        totalDelta += result.delta;
+      }
+
+      expect(allMines).toEqual([{ col: 1, row: 1 }]);
+      expect(totalDelta).toBe(10);
+    });
   });
 });

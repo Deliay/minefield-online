@@ -68,4 +68,40 @@ describe('RankingCard', () => {
     const rankEl = container.querySelector('[class*="rank"]');
     expect(rankEl?.className).toContain('third');
   });
+
+  it('should show NF badge when nfMode is true', () => {
+    render(
+      <RankingCard
+        rank={1}
+        ranking={{ ...mockRanking, nfMode: true, nfSettled: 5 }}
+        isCurrentPlayer={false}
+        maxScore={100}
+      />
+    );
+    expect(screen.getByText('NF')).toBeDefined();
+  });
+
+  it('should not show NF badge when nfMode is false', () => {
+    render(
+      <RankingCard
+        rank={1}
+        ranking={{ ...mockRanking, nfMode: false, nfSettled: 0 }}
+        isCurrentPlayer={false}
+        maxScore={100}
+      />
+    );
+    expect(screen.queryByText('NF')).toBeNull();
+  });
+
+  it('should not show NF badge when nfMode is undefined', () => {
+    render(
+      <RankingCard
+        rank={1}
+        ranking={{ ...mockRanking }}
+        isCurrentPlayer={false}
+        maxScore={100}
+      />
+    );
+    expect(screen.queryByText('NF')).toBeNull();
+  });
 });

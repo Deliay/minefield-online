@@ -1,5 +1,5 @@
-import { Stage, Text, Layer } from 'react-konva'
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { Stage, Text, Layer, Ring } from 'react-konva'
+import { useEffect, useRef, useState, useCallback, useMemo, memo } from 'react'
 import Konva from 'konva'
 import { socketService } from './services/socket'
 import type { User, Ranking } from './services/socket'
@@ -16,6 +16,25 @@ const COLS = 1200
 const ROWS = 640
 const MINIMAP_WIDTH = 200
 const MINIMAP_HEIGHT = Math.floor(ROWS * (MINIMAP_WIDTH / COLS))
+
+const gridWidth = COLS * CELL_SIZE
+const gridHeight = ROWS * CELL_SIZE
+const gridLines = (() => {
+  const lines: import('react').ReactNode[] = []
+  for (let i = 0; i <= COLS; i++) {
+    const x = i * CELL_SIZE
+    lines.push(<GridLine key={`v-${i}`} x1={x} y1={0} x2={x} y2={gridHeight} />)
+  }
+  for (let i = 0; i <= ROWS; i++) {
+    const y = i * CELL_SIZE
+    lines.push(<GridLine key={`h-${i}`} x1={0} y1={y} x2={gridWidth} y2={y} />)
+  }
+  return lines
+})()
+
+const StaticGridLayer = memo(function StaticGridLayer() {
+  return <Layer listening={false}>{gridLines}</Layer>
+})
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -35,21 +54,6 @@ function App() {
   const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number; radius: number; opacity: number }>>([])
   const rippleRefs = useRef<Map<number, Konva.Ring>>(new Map())
   const [rankings, setRankings] = useState<Ranking[]>([])
-  const [gridLines] = useState<React.ReactNode[]>(() => {
-    const lines: React.ReactNode[] = []
-    const gridWidth = COLS * CELL_SIZE
-    const gridHeight = ROWS * CELL_SIZE
-
-    for (let i = 0; i <= COLS; i++) {
-      const x = i * CELL_SIZE
-      lines.push(<GridLine key={`v-${i}`} x1={x} y1={0} x2={x} y2={gridHeight} />)
-    }
-    for (let i = 0; i <= ROWS; i++) {
-      const y = i * CELL_SIZE
-      lines.push(<GridLine key={`h-${i}`} x1={0} y1={y} x2={gridWidth} y2={y} />)
-    }
-    return lines
-  })
 
   const flagCellNodes = useMemo(() => {
     const flagNodes: React.ReactNode[] = []
@@ -406,9 +410,7 @@ function App() {
           onContextMenu={handleContextMenu}
           onClick={handleClick}
         >
-          <Layer listening={false}>
-            {gridLines}
-          </Layer>
+          <StaticGridLayer />
           <Layer listening={false}>
             {flagCellNodes}
             {revealedCellNodes}
@@ -436,7 +438,7 @@ function App() {
               />
             ))}
             {ripples.map((ripple) => (
-              <Konva.Ring
+              <Ring
                 key={ripple.id}
                 ref={(node) => {
                   if (node) rippleRefs.current.set(ripple.id, node);
@@ -446,7 +448,7 @@ function App() {
                 innerRadius={0}
                 outerRadius={0}
                 fill="transparent"
-                stroke="rgba(99, 102, 241, 0.6)"
+                stroke="rgba(92, 122, 153, 0.6)"
                 strokeWidth={2}
                 opacity={ripple.opacity}
               />

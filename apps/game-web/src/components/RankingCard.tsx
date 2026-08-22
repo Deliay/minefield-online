@@ -48,6 +48,12 @@ export function RankingCard({ rank, ranking, isCurrentPlayer, maxScore, rankChan
           {badge}
         </div>
       )}
+
+      {ranking.nfMode && (
+        <div className={styles.nfBadge}>
+          NF
+        </div>
+      )}
     </div>
   );
 }

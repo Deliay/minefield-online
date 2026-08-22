@@ -6,6 +6,8 @@ export interface Session {
   socketId: string;
   score: number;
   createdAt: number;
+  nfMode: boolean;
+  nfSettled: number;
 }
 
 export interface Ranking {
@@ -13,6 +15,8 @@ export interface Ranking {
   displayName: string;
   score: number;
   isCurrentPlayer: boolean;
+  nfMode: boolean;
+  nfSettled: number;
 }
 
 const sessions = new Map<string, Session>();
@@ -29,6 +33,8 @@ export function createSession(
     socketId,
     score,
     createdAt: Date.now(),
+    nfMode: false,
+    nfSettled: 0,
   };
   sessions.set(socketId, session);
   return session;
@@ -96,5 +102,7 @@ export function getLeaderboard(currentSocketId?: string): Ranking[] {
     displayName: s.displayName,
     score: s.score,
     isCurrentPlayer: s.socketId === currentSocketId,
+    nfMode: s.nfMode,
+    nfSettled: s.nfSettled,
   }));
 }

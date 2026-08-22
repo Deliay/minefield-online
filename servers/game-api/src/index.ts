@@ -191,7 +191,7 @@ io.on('connection', async (socket) => {
 
     const updated = await updateScore(socket.id, totalDelta);
     if (updated) {
-      socket.emit('nfSettled', {
+      io.emit('nfSettled', {
         col,
         row,
         mines: settledMines,

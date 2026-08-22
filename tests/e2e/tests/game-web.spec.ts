@@ -194,7 +194,10 @@ test.describe('game-web socket integration', () => {
       await page.mouse.move(cellX, cellY);
       await page.waitForTimeout(300);
       await page.mouse.click(cellX, cellY, { button: 'right' });
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000);
+
+      const flagElements = page.locator('text=🚩');
+      await expect(flagElements).toHaveCount(0);
     });
 
     test('NF badge shows in leaderboard when NF mode is enabled', async ({ page }) => {

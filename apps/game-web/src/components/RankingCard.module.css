@@ -69,6 +69,16 @@
   flex-shrink: 0;
 }
 
+.nfBadge {
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  color: var(--text-inverse);
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
 @keyframes rankChange {
   0% {
     transform: scale(1);

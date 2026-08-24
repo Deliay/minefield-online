@@ -11,7 +11,9 @@ import {
   updateScore,
   updateDisplayName,
   getLeaderboard,
+  getSession,
 } from './session.js';
+import { findSettleableCluster } from './nfSettler.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -113,9 +115,16 @@ io.on('connection', async (socket) => {
 
   socket.emit('init', {
     sessionId: socket.id,
-    user: { username, displayName, score },
+    user: {
+      username,
+      displayName,
+      score,
+      nfMode: session.nfMode,
+      nfSettled: session.nfSettled,
+    },
     revealed: minefield.getAllRevealed(),
     flagged: minefield.getAllFlagged(),
+    settled: minefield.getAllSettled(),
   });
 
   broadcastLeaderboard();
@@ -136,11 +145,71 @@ io.on('connection', async (socket) => {
         io.emit('scoreUpdate', { sessionId: socket.id, score: updated.score });
         broadcastLeaderboard();
       }
+      return;
+    }
+
+    const session = getSession(socket.id);
+    if (!session?.nfMode) return;
+
+    const cell = minefield.getCell(col, row);
+    if (!cell || cell.isMine) return;
+
+    const cols = minefield.getCols();
+    const rows = minefield.getRows();
+    const board = minefield.getCells();
+    const revealed = minefield.getRevealedSet();
+    const settled = minefield.getSettledSet();
+
+    const neighbors = [
+      { col: col - 1, row: row - 1 }, { col: col, row: row - 1 }, { col: col + 1, row: row - 1 },
+      { col: col - 1, row: row },                                       { col: col + 1, row: row },
+      { col: col - 1, row: row + 1 }, { col: col, row: row + 1 }, { col: col + 1, row: row + 1 },
+    ];
+
+    const cellKey = (c: number, r: number) => c * rows + r;
+    const settledMines: Array<{ col: number; row: number }> = [];
+    let totalDelta = 0;
+
+    for (const n of neighbors) {
+      if (n.col < 0 || n.col >= cols || n.row < 0 || n.row >= rows) continue;
+      if (!board[n.row][n.col].isMine) continue;
+      if (settled.has(cellKey(n.col, n.row))) continue;
+
+      const settleResult = findSettleableCluster(board, revealed, settled, cols, rows, n.col, n.row);
+      if (!settleResult) continue;
+
+      for (const mine of settleResult.mines) {
+        minefield.markSettled(mine.col, mine.row);
+        settledMines.push(mine);
+      }
+      totalDelta += settleResult.delta;
+    }
+
+    if (settledMines.length === 0) return;
+
+    session.nfSettled += settledMines.length;
+
+    const updated = await updateScore(socket.id, totalDelta);
+    if (updated) {
+      io.emit('nfSettled', {
+        col,
+        row,
+        mines: settledMines,
+        delta: totalDelta,
+      });
+      io.emit('scoreUpdate', { sessionId: socket.id, score: updated.score });
+      broadcastLeaderboard();
     }
   });
 
   socket.on('flag', async (data: { col: number; row: number }) => {
     const { col, row } = data;
+    const session = getSession(socket.id);
+    if (session?.nfMode) {
+      io.emit('cellFlagged', { col, row, isFlagged: false });
+      return;
+    }
+
     if (minefield.isRevealed(col, row)) {
       io.emit('cellFlagged', { col, row, isFlagged: false });
       return;
@@ -180,6 +249,12 @@ io.on('connection', async (socket) => {
 
   socket.on('chord', async (data: { col: number; row: number }) => {
     const { col, row } = data;
+    const session = getSession(socket.id);
+    if (session?.nfMode) {
+      io.emit('cellRevealed', { col, row, cells: [] });
+      return;
+    }
+
     const results = minefield.chord(col, row);
     io.emit('cellRevealed', { col, row, cells: results });
 
@@ -191,6 +266,16 @@ io.on('connection', async (socket) => {
         broadcastLeaderboard();
       }
     }
+  });
+
+  socket.on('setNfMode', (data: { enabled: boolean }) => {
+    const { enabled } = data;
+    const session = getSession(socket.id);
+    if (!session) return;
+
+    session.nfMode = enabled;
+    socket.emit('nfModeUpdated', { nfMode: enabled });
+    broadcastLeaderboard();
   });
 
   socket.on('setName', async (data: { name?: string }) => {

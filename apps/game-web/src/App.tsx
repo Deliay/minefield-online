@@ -85,6 +85,25 @@ function App() {
     return revealed
   }, [revealedCells])
 
+  const unrevealedCellNodes = useMemo(() => {
+    const unrevealed: React.ReactNode[] = []
+    const gridWidth = COLS * CELL_SIZE
+    const gridHeight = ROWS * CELL_SIZE
+
+    // 创建未揭开格子的背景
+    unrevealed.push(
+      <Cell
+        key="unrevealed-bg"
+        col={0}
+        row={0}
+        cellSize={gridWidth}
+        type="unrevealed-bg"
+      />
+    )
+
+    return unrevealed
+  }, [])
+
   const cellKey = useCallback((col: number, row: number) => `${col},${row}`, [])
   const cellKeyObj = useCallback(({ col, row }: { col: number, row: number }) => `${col},${row}`, [])
 
@@ -412,6 +431,7 @@ function App() {
         >
           <StaticGridLayer />
           <Layer listening={false}>
+            {unrevealedCellNodes}
             {flagCellNodes}
             {revealedCellNodes}
           </Layer>
@@ -482,7 +502,7 @@ function App() {
                   top: row * CELL_SIZE * scaleY,
                   width: Math.max(1, CELL_SIZE * scaleX),
                   height: Math.max(1, CELL_SIZE * scaleY),
-                  backgroundColor: cell.isMine ? '#ff0000' : '#ccc',
+                  backgroundColor: cell.isMine ? '#90a4ae' : '#e8ecf0',
                 }}
               />
             )

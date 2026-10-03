@@ -6,6 +6,7 @@ import type { User, Ranking } from './services/socket'
 import { getToken, clearToken } from './services/api'
 import { Login } from './pages/Login'
 import { Cell, GridLine, PointerRect } from './components/Cell'
+import { NfModeToggle } from './components/NfModeToggle'
 import { GameLayout } from './components/GameLayout'
 import { UserInfoCard } from './components/UserInfoCard'
 import { LeaderboardPanel } from './components/LeaderboardPanel'
@@ -54,6 +55,8 @@ function App() {
   const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number; radius: number; opacity: number }>>([])
   const rippleRefs = useRef<Map<number, Konva.Ring>>(new Map())
   const [rankings, setRankings] = useState<Ranking[]>([])
+  const [nfMode, setNfMode] = useState(false)
+  const [settledCells, updateSettledCells] = useImmer<{ [x: string]: { col: number, row: number } }>({})
 
   const flagCellNodes = useMemo(() => {
     const flagNodes: React.ReactNode[] = []
@@ -85,6 +88,15 @@ function App() {
     return revealed
   }, [revealedCells])
 
+  const settledCellNodes = useMemo(() => {
+    const settled: React.ReactNode[] = []
+    for (const key of Object.keys(settledCells)) {
+      const cell = settledCells[key];
+      settled.push(<Cell key={key} col={cell.col} row={cell.row} cellSize={CELL_SIZE} type='nf' />)
+    }
+    return settled
+  }, [settledCells])
+
   const cellKey = useCallback((col: number, row: number) => `${col},${row}`, [])
   const cellKeyObj = useCallback(({ col, row }: { col: number, row: number }) => `${col},${row}`, [])
 
@@ -95,6 +107,7 @@ function App() {
 
     socketService.onInit((data) => {
       setUser(data.user);
+      setNfMode(data.user.nfMode);
       updateRevealedCells((obj) => {
         for (const cell of data.revealed) {
           obj[cellKeyObj(cell)] = cell;
@@ -105,7 +118,13 @@ function App() {
         for (const flagData of data.flagged) {
           obj[cellKeyObj(flagData)] = flagData;
         }
-      })
+      });
+
+      updateSettledCells((obj) => {
+        for (const settledData of data.settled) {
+          obj[cellKeyObj(settledData)] = settledData;
+        }
+      });
     });
 
     socketService.onCellRevealed((data) => {
@@ -161,6 +180,19 @@ function App() {
       setRankings(data.rankings);
     });
 
+    socketService.onNfModeUpdated((data) => {
+      setNfMode(data.nfMode);
+    });
+
+    socketService.onNfSettled((data) => {
+      updateSettledCells((prev) => {
+        for (const mine of data.mines) {
+          const key = `${mine.col},${mine.row}`;
+          prev[key] = mine;
+        }
+      });
+    });
+
     socketService.onForceLogout(() => {
       clearToken();
       setUser(null);
@@ -177,7 +209,7 @@ function App() {
     return () => {
       socketService.disconnect();
     };
-  }, [isAuthed, cellKeyObj, updateFlaggedCells, updateRevealedCells]);
+  }, [isAuthed, cellKeyObj, updateFlaggedCells, updateRevealedCells, updateSettledCells]);
 
   useEffect(() => {
     const stage = stageRef.current
@@ -233,6 +265,7 @@ function App() {
   const handleContextMenu = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       e.evt.preventDefault()
+      if (nfMode) return
       const stage = stageRef.current
       if (!stage) return
       const pos = stage.getPointerPosition()
@@ -247,7 +280,7 @@ function App() {
         }
       }
     },
-    []
+    [nfMode]
   )
 
   const handleClick = useCallback(
@@ -293,14 +326,16 @@ function App() {
           const revealed = revealedCells[key]
           const hasRevealed = !!revealed;
           if (hasRevealed && !revealed.isMine && Number(revealed.number) > 0) {
-            socketService.chord(col, row)
+            if (!nfMode) {
+              socketService.chord(col, row)
+            }
           } else if (!hasRevealed && !flaggedCells[key]) {
             socketService.reveal(col, row)
           }
         }
       }
     },
-    [revealedCells, flaggedCells, cellKey]
+    [revealedCells, flaggedCells, cellKey, nfMode]
   )
 
   const scaleX = MINIMAP_WIDTH / (COLS * CELL_SIZE)
@@ -363,6 +398,10 @@ function App() {
         onSetName={handleSetName}
         onLogout={handleLogout}
       />
+      <NfModeToggle
+        nfMode={nfMode}
+        onToggle={(enabled) => socketService.setNfMode(enabled)}
+      />
       <LeaderboardPanel
         rankings={rankings}
         currentUsername={user.username}
@@ -414,6 +453,7 @@ function App() {
           <Layer listening={false}>
             {flagCellNodes}
             {revealedCellNodes}
+            {settledCellNodes}
           </Layer>
           <Layer listening={false}>
             {pointerPos && (

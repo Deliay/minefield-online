@@ -12,9 +12,10 @@ interface RevealedCell {
 
 interface InitEvent {
   sessionId: string;
-  user: { username: string; displayName: string; score: number };
+  user: { username: string; displayName: string; score: number; nfMode?: boolean; nfSettled?: number };
   revealed: RevealedCell[];
   flagged: Array<{ col: number; row: number }>;
+  settled?: Array<{ col: number; row: number }>;
 }
 
 interface ScoreUpdateEvent {
@@ -27,6 +28,8 @@ interface Ranking {
   displayName: string;
   score: number;
   isCurrentPlayer: boolean;
+  nfMode?: boolean;
+  nfSettled?: number;
 }
 
 interface LeaderboardEvent {
@@ -366,6 +369,69 @@ describe('game-api WebSocket API', () => {
       for (let i = 0; i < scores.length - 1; i++) {
         expect(scores[i]).toBeGreaterThanOrEqual(scores[i + 1]);
       }
+    });
+  });
+
+  describe('NF mode', () => {
+    it('should init with nfMode=false by default', async () => {
+      await waitForConnect(socket);
+      const data = await waitForEvent<InitEvent>(socket, 'init');
+      expect(data.user.nfMode).toBe(false);
+      expect(data.user.nfSettled).toBe(0);
+      expect(Array.isArray(data.settled)).toBe(true);
+    });
+
+    it('should toggle nfMode via setNfMode', async () => {
+      await waitForConnect(socket);
+      await waitForEvent<InitEvent>(socket, 'init');
+
+      socket.emit('setNfMode', { enabled: true });
+      const updated = await waitForEvent<{ nfMode: boolean }>(socket, 'nfModeUpdated');
+      expect(updated.nfMode).toBe(true);
+    });
+
+    it('should ignore flag in NF mode', async () => {
+      await waitForConnect(socket);
+      await waitForEvent<InitEvent>(socket, 'init');
+
+      socket.emit('setNfMode', { enabled: true });
+      await waitForEvent<any>(socket, 'nfModeUpdated');
+
+      socket.emit('flag', { col: 100, row: 100 });
+      const data = await waitForEvent<{ col: number; row: number; isFlagged: boolean }>(
+        socket,
+        'cellFlagged'
+      );
+      expect(data.isFlagged).toBe(false);
+    });
+
+    it('should disable chord in NF mode', async () => {
+      await waitForConnect(socket);
+      await waitForEvent<InitEvent>(socket, 'init');
+
+      socket.emit('setNfMode', { enabled: true });
+      await waitForEvent<any>(socket, 'nfModeUpdated');
+
+      socket.emit('chord', { col: 100, row: 100 });
+      const data = await waitForEvent<{ col: number; row: number; cells: any[] }>(
+        socket,
+        'cellRevealed'
+      );
+      expect(data.cells).toEqual([]);
+    });
+
+    it('should include nfMode/nfSettled in leaderboard', async () => {
+      await waitForConnect(socket);
+      await waitForEvent<InitEvent>(socket, 'init');
+
+      socket.emit('setNfMode', { enabled: true });
+      await waitForEvent<any>(socket, 'nfModeUpdated');
+
+      const leaderboard = await waitForEvent<LeaderboardEvent>(socket, 'leaderboard');
+      const current = leaderboard.rankings.find((r) => r.isCurrentPlayer);
+      expect(current).toBeDefined();
+      expect(current!.nfMode).toBe(true);
+      expect(typeof current!.nfSettled).toBe('number');
     });
   });
 });

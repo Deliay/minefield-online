@@ -6,7 +6,7 @@ interface CellProps {
   col: number
   row: number
   cellSize: number
-  type: 'flag' | 'revealed' | 'number'
+  type: 'flag' | 'revealed' | 'nf'
   isMine?: boolean
   number?: number
 }
@@ -56,6 +56,39 @@ export const Cell = memo(function Cell({ col, row, cellSize, type, isMine, numbe
         perfectDrawEnabled={false}
         listening={false} 
       />
+    )
+  }
+
+  if (type === 'nf') {
+    return (
+      <Group>
+        <Rect
+          id={id}
+          x={x}
+          y={y}
+          width={cellSize}
+          height={cellSize}
+          fill="#ff6b6b"
+          stroke="#ff0000"
+          strokeWidth={2}
+          perfectDrawEnabled={false}
+        />
+        <Text
+          id={id}
+          x={x}
+          y={y}
+          width={cellSize}
+          height={cellSize}
+          text="NF"
+          fontSize={16}
+          fontStyle="bold"
+          fill="#ffffff"
+          align="center"
+          verticalAlign="middle"
+          perfectDrawEnabled={false}
+          listening={false}
+        />
+      </Group>
     )
   }
 

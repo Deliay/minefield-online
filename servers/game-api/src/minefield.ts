@@ -23,6 +23,7 @@ interface RevealedCell {
 interface GameState {
   revealed: Map<number, { isMine: boolean; number: number }>;
   flagged: Set<number>;
+  settled: Set<number>;
 }
 
 export class Minefield {
@@ -34,6 +35,7 @@ export class Minefield {
     this.gameState = {
       revealed: new Map(),
       flagged: new Set(),
+      settled: new Set(),
     };
     this.generate();
   }
@@ -128,6 +130,24 @@ export class Minefield {
 
   isFlagged(col: number, row: number): boolean {
     return this.gameState.flagged.has(col * ROWS + row);
+  }
+
+  isSettled(col: number, row: number): boolean {
+    return this.gameState.settled.has(col * ROWS + row);
+  }
+
+  markSettled(col: number, row: number): void {
+    this.gameState.settled.add(col * ROWS + row);
+  }
+
+  getAllSettled(): Array<{ col: number; row: number }> {
+    const results: Array<{ col: number; row: number }> = [];
+    for (const idx of this.gameState.settled) {
+      const row = idx % ROWS;
+      const col = Math.floor(idx / ROWS);
+      results.push({ col, row });
+    }
+    return results;
   }
 
   reveal(col: number, row: number): RevealedCell[] {
@@ -276,9 +296,30 @@ export class Minefield {
     return results;
   }
 
+  getCells(): Cell[][] {
+    return this.cells;
+  }
+
+  getRevealedSet(): Set<number> {
+    return new Set(this.gameState.revealed.keys());
+  }
+
+  getSettledSet(): Set<number> {
+    return this.gameState.settled;
+  }
+
+  getCols(): number {
+    return COLS;
+  }
+
+  getRows(): number {
+    return ROWS;
+  }
+
   reset(): void {
     this.gameState.revealed.clear();
     this.gameState.flagged.clear();
+    this.gameState.settled.clear();
   }
 }
 

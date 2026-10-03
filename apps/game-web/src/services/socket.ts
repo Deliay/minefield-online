@@ -26,6 +26,8 @@ export interface User {
   username: string;
   displayName: string;
   score: number;
+  nfMode: boolean;
+  nfSettled: number;
 }
 
 export interface InitEvent {
@@ -33,6 +35,7 @@ export interface InitEvent {
   user: User;
   revealed: RevealedCell[];
   flagged: Array<{ col: number; row: number }>;
+  settled: Array<{ col: number; row: number }>;
 }
 
 export interface ScoreUpdateEvent {
@@ -49,10 +52,28 @@ export interface Ranking {
   displayName: string;
   score: number;
   isCurrentPlayer: boolean;
+  nfMode: boolean;
+  nfSettled: number;
 }
 
 export interface LeaderboardEvent {
   rankings: Ranking[];
+}
+
+export interface SettledMine {
+  col: number;
+  row: number;
+}
+
+export interface NfModeUpdatedEvent {
+  nfMode: boolean;
+}
+
+export interface NfSettledEvent {
+  col: number;
+  row: number;
+  mines: SettledMine[];
+  delta: number;
 }
 
 interface Listeners {
@@ -64,6 +85,8 @@ interface Listeners {
   onForceLogout?: (data: ForceLogoutEvent) => void;
   onDisconnect?: () => void;
   onLoginRequired?: () => void;
+  onNfModeUpdated?: (data: NfModeUpdatedEvent) => void;
+  onNfSettled?: (data: NfSettledEvent) => void;
 }
 
 class SocketService {
@@ -134,6 +157,14 @@ class SocketService {
     this.socket.on('forceLogout', (data: ForceLogoutEvent) => {
       this.listeners.onForceLogout?.(data);
     });
+
+    this.socket.on('nfModeUpdated', (data: NfModeUpdatedEvent) => {
+      this.listeners.onNfModeUpdated?.(data);
+    });
+
+    this.socket.on('nfSettled', (data: NfSettledEvent) => {
+      this.listeners.onNfSettled?.(data);
+    });
   }
 
   disconnect() {
@@ -173,6 +204,14 @@ class SocketService {
     this.listeners.onLoginRequired = callback;
   }
 
+  onNfModeUpdated(callback: (data: NfModeUpdatedEvent) => void) {
+    this.listeners.onNfModeUpdated = callback;
+  }
+
+  onNfSettled(callback: (data: NfSettledEvent) => void) {
+    this.listeners.onNfSettled = callback;
+  }
+
   setName(name: string) {
     this.socket?.emit('setName', { name });
   }
@@ -187,6 +226,10 @@ class SocketService {
 
   flag(col: number, row: number) {
     this.socket?.emit('flag', { col, row });
+  }
+
+  setNfMode(enabled: boolean) {
+    this.socket?.emit('setNfMode', { enabled });
   }
 }
 
